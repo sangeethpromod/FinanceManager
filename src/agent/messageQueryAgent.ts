@@ -2,30 +2,28 @@ const PreTransaction = require("../models/txnModel");
 const Finance = require("../models/financeModel");
 const { v4: uuidv4 } = require("uuid");
 const { getGeminiModel } = require("../agentConfig/agentic_initialization");
+const { updateBalance } = require("../services/accountService");
 
-// Helper: get today’s date string in dd/mm/yyyy or ISO, consistent with your stored date
+// Helper: get today’s date string in dd/mm/yyyy
 function getTodayDate() {
   const today = new Date();
   const d = today.getDate().toString().padStart(2, "0");
   const m = (today.getMonth() + 1).toString().padStart(2, "0");
   const y = today.getFullYear();
-  return `${d}/${m}/${y}`; // or use ISO if that’s what you saved
+  return `${d}/${m}/${y}`;
 }
 
 const DataExtractor_Agent = async () => {
   const model = getGeminiModel();
-
   const today = getTodayDate();
 
   console.log(`🚀 Fetching transactions for today: ${today}`);
 
-  // Fetch transactions from PreTransaction where date === today
   const todaysTxns = await PreTransaction.find({ date: today });
 
   console.log(`🔎 Found ${todaysTxns.length} transactions for today.`);
 
   for (const txn of todaysTxns) {
-    // Check if uuid already exists in Finance (already processed)
     const exists = await Finance.findOne({ uuid: txn.uuid });
     if (exists) {
       console.log(`⏭️ Skipping transaction UUID ${txn.uuid} (already processed)`);
@@ -34,37 +32,34 @@ const DataExtractor_Agent = async () => {
 
     console.log(`🔍 Processing transaction UUID ${txn.uuid}: ${txn.message}`);
 
-    // Your existing Gemini extraction & saving logic here, but reuse txn.uuid
-
     const prompt = `
 You are an expert financial data extractor. 
 
 From the given SMS message, extract and return strictly valid JSON with these keys:
 - amount (number, without currency symbol)
 - account (one of: "Federal Bank", "HDFC Bank", "Jupiter", "OneCard", "Diners Club", "HDFC Biz")
-- sender_or_receiver (the exact party involved, e.g. a person name, UPI ID, or merchant name)
+- sender_or_receiver (REQUIRED: the party involved - person name, UPI ID, merchant name, or if not clear, use "Bank Transfer" or "Unknown")
 - note (any extra relevant info like transaction type, date, or reference)
--category (i need you to be smart agent and make a Auto-tagging of expenses (e.g., "food", "travel", "utilities", etc.)
--comment(leave it empty for now)
+- category (auto-tag expense category: food, travel, etc.)
+- comment (leave it empty)
+- type (one of: "credit", "debit")
 
-Example input message:
+Rules:
+- If sender_or_receiver is missing, use:
+  - "Bank Deposit" for credits
+  - "Bank Withdrawal" for debits
+  - "Account Transfer" for internal transfers
+
+Example input:
 "Rs 15.00 debited via UPI on 21-05-2025 17:55:11 to VPA reyvanthrm@okaxis.Ref No 550730368484.Small txns?Use UPI Lite!-Federal Bank"
 
-Example output JSON:
-{
-  "amount": 15.00,
-  "account": "Federal Bank",
-  "sender_or_receiver": "reyvanthrm@okaxis",
-  "note": "Debited via UPI on 21-05-2025 17:55:11. Ref No 550730368484. Small txns? Use UPI Lite!"
-}
-
-Now, extract the JSON from this SMS message:
+Now extract JSON from this message:
 "${txn.message}"
 `;
 
     try {
       const result = await model.generateContent(prompt);
-      const text: string = result.response.text();
+      const text = result.response.text();
 
       console.log(`📩 Raw Response:\n${text}`);
 
@@ -74,16 +69,22 @@ Now, extract the JSON from this SMS message:
       console.log("✅ Parsed Result:", parsed);
 
       await Finance.create({
-        uuid: txn.uuid, // keep the same uuid
+        uuid: txn.uuid,
         amount: parsed.amount,
         account: parsed.account,
         party: parsed.sender_or_receiver,
         note: parsed.note,
         category: parsed.category,
         comment: parsed.comment,
+        type: parsed.type,
       });
 
-      console.log(`💾 Saved transaction UUID ${txn.uuid} to Finance DB.\n`);
+      console.log(`💾 Saved transaction UUID ${txn.uuid} to Finance DB.`);
+
+      // ✅ Now correctly calling the service function
+      await updateBalance(parsed.account, parsed.amount, parsed.type);
+
+      console.log(`💰 Updated balance for ${parsed.account}.\n`);
 
     } catch (err) {
       console.error(`❌ Failed to process transaction UUID ${txn.uuid}:`, err, "\n");
