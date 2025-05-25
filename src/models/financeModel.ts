@@ -10,7 +10,7 @@ const financeSchema = new mongoose.Schema({
   type: { type: String, required: true },
   note: { type: String },
   comment: { type: String },
-});
+}, { timestamps: true });
 
 const Finance = mongoose.model("Finance", financeSchema);
 
