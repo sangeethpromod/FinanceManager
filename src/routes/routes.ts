@@ -12,9 +12,13 @@ router.post("/new-transaction", createTransaction);
 router.get("/all-transactions", getAllTransactions);
 // router.delete("/:id", deleteTransactionById);
 
-// ─────────────────────── Gemini Related ─────────────────────── //
+// ─────────────────────── Agents Related ─────────────────────── //
 const { importTransaction } = require("../controllers/dbquerryAgentController");
 router.post("/import-transaction", importTransaction);
+
+const { getMFInvestmentAdvice } = require("../agent/mfAnalyzerAgent");
+router.get("/mf-analyze", getMFInvestmentAdvice);
+
 
 // ─────────────────────── Account Related ─────────────────────── //
 const { createAccount } = require("../controllers/accountController");
@@ -56,13 +60,21 @@ router.post("/aggregate/yearly", async (req, res) => {
 
 
 // ─────────────────────── Mutual Funds Related ─────────────────────── //
-const { addOrUpdateFund, getAllFunds, getFundByName, getPortfolioSummary } = require("../controllers/mfController");
+const { addFund, getAllFunds, getFundByName, getPortfolioSummary, addLumpsum, updateSipStatus } = require("../controllers/mfController");
 
-router.post("/add-mutual-fund", addOrUpdateFund);
+router.post("/add-mutual-fund", addFund);
 router.get("/all-mutual-fund/", getAllFunds);
 router.get("/select-mutual-fund/:name", getFundByName);
+router.post('/funds/lumpsum', addLumpsum);        
+router.put('/funds/sip-status', updateSipStatus);
 router.get("/get-summary", getPortfolioSummary);
 
+
+// ─────────────────────── Target Related ─────────────────────── //
+const { createTarget, getAllTargets, getDailyTargetComparison } = require("../controllers/targetController");
+router.post("/create-target", createTarget);
+router.get("/getall-target", getAllTargets);
+router.get("/target-comparison", getDailyTargetComparison);
 
 
 
