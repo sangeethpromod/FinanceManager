@@ -71,10 +71,19 @@ router.get("/get-summary", getPortfolioSummary);
 
 
 // ─────────────────────── Target Related ─────────────────────── //
-const { createTarget, getAllTargets, getDailyTargetComparison } = require("../controllers/targetController");
+const { createTarget, getAllTargets, getCurrentPeriodStatus, getTargetComparison } = require("../controllers/targetController");
 router.post("/create-target", createTarget);
 router.get("/getall-target", getAllTargets);
-router.get("/target-comparison", getDailyTargetComparison);
+router.get("/current-period-status", getCurrentPeriodStatus);
+router.get("/target-comparison", getTargetComparison);
+
+
+
+// ─────────────────────── Category Related ─────────────────────── //
+const { createCategory, getAllCategories } = require("../controllers/categoryController");
+router.post("/create-category", createCategory);
+router.get("/getall-category", getAllCategories);
+
 
 
 

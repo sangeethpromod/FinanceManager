@@ -7,6 +7,7 @@ const financeSchema = new mongoose.Schema({
   account: { type: String, required: true },
   party: { type: String, required: true },
   category: { type: String, required: true },
+  label: { type: String, required: false },
   type: { type: String, required: true },
   note: { type: String },
   comment: { type: String },
