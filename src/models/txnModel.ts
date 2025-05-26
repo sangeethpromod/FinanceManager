@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -6,6 +6,7 @@ const transactionSchema = new mongoose.Schema(
     message: { type: String, required: true },
     parsedDetails: { type: Object }, // Optional for now
     date: { type: String, required: true }, 
+    createdAt: { type: Date, default: Date.now, expires: 3 * 24 * 60 * 60 }
   },
   { timestamps: true }
 );

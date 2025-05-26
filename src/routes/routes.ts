@@ -86,5 +86,12 @@ router.get("/getall-category", getAllCategories);
 
 
 
+// ─────────────────────── Category Related ─────────────────────── //
+const { createPartyMap, getUnmappedParties, updatePartyMap, getAllMappings} = require("../controllers/partyMapController");
+
+router.post("/create-party-map", createPartyMap);             //Create mapping
+router.get("/party-map-unmapped", getUnmappedParties); //Get unknown parties
+router.put("/update-party-map/:id", updatePartyMap);       //Update a mapping
+router.get("/get-allparty-map", getAllMappings);              //List all mappings
 
 export default router;

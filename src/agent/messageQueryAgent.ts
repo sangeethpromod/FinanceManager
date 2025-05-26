@@ -1,5 +1,6 @@
 const PreTransaction = require("../models/txnModel");
 const Finance = require("../models/financeModel");
+const PartyCategoryMapAgent = require("../models/partyCategoryMap");
 const { v4: uuidv4 } = require("uuid");
 const { getGeminiModel } = require("../agentConfig/agentic_initialization");
 const { updateBalance } = require("../services/accountService");
@@ -18,9 +19,7 @@ const DataExtractor_Agent = async () => {
   const today = getTodayDate();
 
   console.log(`🚀 Fetching transactions for today: ${today}`);
-
   const todaysTxns = await PreTransaction.find({ date: today });
-
   console.log(`🔎 Found ${todaysTxns.length} transactions for today.`);
 
   for (const txn of todaysTxns) {
@@ -68,22 +67,30 @@ Now extract JSON from this message:
 
       console.log("✅ Parsed Result:", parsed);
 
+      // Check for party → category + label mapping
+      const partyMap = await PartyCategoryMapAgent.findOne({ party: parsed.sender_or_receiver });
+
+      const finalCategory = partyMap ? partyMap.category : parsed.category;
+      const finalLabel = partyMap ? partyMap.label : parsed.sender_or_receiver;
+
+      console.log(`📌 Using Category: ${finalCategory}, Label: ${finalLabel}`);
+
+      // Save the finance record
       await Finance.create({
         uuid: txn.uuid,
         amount: parsed.amount,
         account: parsed.account,
         party: parsed.sender_or_receiver,
+        label: finalLabel,
         note: parsed.note,
-        category: parsed.category,
+        category: finalCategory,
         comment: parsed.comment,
         type: parsed.type,
       });
 
       console.log(`💾 Saved transaction UUID ${txn.uuid} to Finance DB.`);
 
-      // ✅ Now correctly calling the service function
       await updateBalance(parsed.account, parsed.amount, parsed.type);
-
       console.log(`💰 Updated balance for ${parsed.account}.\n`);
 
     } catch (err) {

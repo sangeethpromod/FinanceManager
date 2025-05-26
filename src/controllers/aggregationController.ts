@@ -75,11 +75,40 @@ async function runAggregation(period: "daily" | "weekly" | "monthly" | "quarterl
   return `Aggregation complete for ${period}. ${results.length} categories processed.`;
 }
 
+
+// Test function to check database connection and basic functionality
+// async function testAggregationSystem() {
+//   try {
+//     // Test database connection
+//     const totalRecords = await FinanceAggregation.countDocuments();
+//     const totalAnalytics = await AggregationAnalytics.countDocuments();
+    
+//     console.log(`📊 Database Status:`);
+//     console.log(`   - Finance records: ${totalRecords}`);
+//     console.log(`   - Analytics records: ${totalAnalytics}`);
+    
+//     // Test a quick daily aggregation (non-destructive)
+//     const { start, end } = getStartEndDates("daily");
+//     const todayRecords = await FinanceAggregation.countDocuments({
+//       createdAt: { $gte: start, $lte: end }
+//     });
+    
+//     console.log(`   - Today's records: ${todayRecords}`);
+//     console.log(`✅ Aggregation system test completed successfully`);
+    
+//     return `Test completed: ${totalRecords} total records, ${todayRecords} today`;
+//   } catch (error) {
+//     console.error(`❌ Aggregation system test failed:`, error);
+//     throw error;
+//   }
+// }
+
 // Exporting individual functions to use in API + cron
 module.exports = {
   aggregateDaily: () => runAggregation("daily"),
   aggregateWeekly: () => runAggregation("weekly"),
   aggregateMonthly: () => runAggregation("monthly"),
   aggregateQuarterly: () => runAggregation("quarterly"),
-  aggregateYearly: () => runAggregation("yearly")
+  aggregateYearly: () => runAggregation("yearly"),
+  // testAggregationSystem: testAggregationSystem
 };
