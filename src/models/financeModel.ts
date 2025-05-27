@@ -11,6 +11,7 @@ const financeSchema = new mongoose.Schema({
   type: { type: String, required: true },
   note: { type: String },
   comment: { type: String },
+  createdAt: { type: Date, default: Date.now, expires: 60 * 60 * 24 * 14 },
 }, { timestamps: true });
 
 const Finance = mongoose.model("Finance", financeSchema);

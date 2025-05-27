@@ -142,7 +142,7 @@ const updatePartyMap = async (req: Request, res: Response): Promise<void> => {
 // Get all distinct parties from Finance not mapped yet
 const getUnmappedParties = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const Finance = require("../models/finance"); // Make sure to import Finance model
+    const Finance = require("../models/financeModel"); // Make sure to import Finance model
     
     const allParties = await Finance.distinct("party");
     const mappedParties = await PartyCategoryMap.distinct("parties"); // Changed from "party" to "parties"

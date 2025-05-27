@@ -21,8 +21,11 @@ router.get("/mf-analyze", getMFInvestmentAdvice);
 
 
 // ─────────────────────── Account Related ─────────────────────── //
-const { createAccount } = require("../controllers/accountController");
+const { createAccount, addManualTransaction, getAllAccounts } = require("../controllers/accountController");
 router.post("/create-account", createAccount);
+router.post("/maunual-transaction", addManualTransaction);
+
+router.get("/all-accounts", getAllAccounts);
 
 // ─────────────────────── Aggregation Related ─────────────────────── //
 const {

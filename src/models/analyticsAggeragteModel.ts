@@ -1,18 +1,24 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
+
+const categoryBreakdownSchema = new mongoose.Schema({
+  category: { type: String, required: true },
+  totalAmount: { type: Number, required: true },
+}, { _id: false });
 
 const aggregationSchema = new mongoose.Schema({
-  date: { type: Date, required: true }, // This will represent the date for daily, start of week/month/etc.
+  date: { type: Date, required: true },
   type: {
     type: String,
     enum: ["daily", "weekly", "monthly", "quarterly", "yearly"],
     required: true,
   },
-  category: { type: String, required: true }, // e.g. Food, Travel
   totalAmount: { type: Number, required: true },
+  categories: [categoryBreakdownSchema],
 }, {
   timestamps: true,
-  index: { type: 1, date: 1, category: 1 }, // for fast lookup
 });
+
+aggregationSchema.index({ type: 1, date: 1 }, { unique: true });
 
 const AggregationAnalytics = mongoose.model("AggregationAnalytics", aggregationSchema);
 
