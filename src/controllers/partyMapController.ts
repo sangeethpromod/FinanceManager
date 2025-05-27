@@ -81,7 +81,7 @@ const createPartyMap = async (req: Request, res: Response): Promise<void> => {
 };
 
 // Get all current mappings
-const getAllMappings = async (req: Request, res: Response): Promise<void> => {
+const getAllMappings = async (_req: Request, res: Response): Promise<void> => {
   try {
     const mappings = await PartyCategoryMap.find({});
     res.status(200).json(mappings);
@@ -140,7 +140,7 @@ const updatePartyMap = async (req: Request, res: Response): Promise<void> => {
 };
 
 // Get all distinct parties from Finance not mapped yet
-const getUnmappedParties = async (req: Request, res: Response): Promise<void> => {
+const getUnmappedParties = async (_req: Request, res: Response): Promise<void> => {
   try {
     const Finance = require("../models/finance"); // Make sure to import Finance model
     

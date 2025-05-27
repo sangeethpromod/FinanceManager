@@ -41,7 +41,7 @@ const fetchMarketNews = async (): Promise<string[]> => {
 };
 
 // ✅ Public GET API to serve advice to frontend
-const getMFInvestmentAdvice = async (req: Request, res: Response) => {
+const getMFInvestmentAdvice = async (_: Request, res: Response) => {
   const model = getGeminiModel();
 
   try {

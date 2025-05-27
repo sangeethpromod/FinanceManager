@@ -37,7 +37,7 @@ export const bulkUpdateFinanceCategory = async (
     if (result.modifiedCount === 0) {
       console.warn(`🟡 No finance entries updated for party: ${party}`);
     } else {
-      console.log(`✅ ${result.modifiedCount} finance entries updated for party: ${party}`);
+      console.log(`✅ ${result.modifiedCount} finance entries updated for party: ${party} &${label} in category: ${category}`);
     }
   } catch (err) {
     console.error(`❌ Error updating finance entries for party: ${party}`, err);

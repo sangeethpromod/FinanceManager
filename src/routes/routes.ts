@@ -33,27 +33,27 @@ const {
   aggregateYearly
 } = require("../controllers/aggregationController");
 
-router.post("/aggregate/daily", async (req, res) => {
+router.post("/aggregate/daily", async (_req, res) => {
   const msg = await aggregateDaily();
   res.send({ status: "ok", message: msg });
 });
 
-router.post("/aggregate/weekly", async (req, res) => {
+router.post("/aggregate/weekly", async (_req, res) => {
   const msg = await aggregateWeekly();
   res.send({ status: "ok", message: msg });
 });
 
-router.post("/aggregate/monthly", async (req, res) => {
+router.post("/aggregate/monthly", async (_req, res) => {
   const msg = await aggregateMonthly();
   res.send({ status: "ok", message: msg });
 });
 
-router.post("/aggregate/quarterly", async (req, res) => {
+router.post("/aggregate/quarterly", async (_req, res) => {
   const msg = await aggregateQuarterly();
   res.send({ status: "ok", message: msg });
 });
 
-router.post("/aggregate/yearly", async (req, res) => {
+router.post("/aggregate/yearly", async (_req, res) => {
   const msg = await aggregateYearly();
   res.send({ status: "ok", message: msg });
 });

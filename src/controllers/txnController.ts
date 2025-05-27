@@ -35,7 +35,7 @@ const createTransaction = async (req: Request, res: Response) => {
 };
 
 // Get all transactions
-const getAllTransactions = async (req: Request, res: Response) => {
+const getAllTransactions = async (_req: Request, res: Response) => {
   try {
     const FindTransactions = await PreTransaction.find();
     return res.status(200).json(FindTransactions);

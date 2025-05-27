@@ -33,7 +33,7 @@ const createCategory = async (req: Request, res: Response) => {
   }
 };
 
-const getAllCategories = async (req: Request, res: Response) => {
+const getAllCategories = async (_: Request, res: Response) => {
   try {
     const categories = await Category.find();
     return res.status(200).json(categories);

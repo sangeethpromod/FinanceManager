@@ -41,7 +41,7 @@ const createTarget = async (req: Request, res: Response) => {
   }
 };
 
-const getAllTargets = async (req: Request, res: Response) => {
+const getAllTargets = async (_req: Request, res: Response) => {
   try {
     const FindTargets = await Targets.find();
     return res.status(200).json(FindTargets);
