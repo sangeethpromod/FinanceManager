@@ -243,6 +243,48 @@ const getAllFunds = async (_req: Request, res: Response) => {
   }
 };
 
+
+
+// Custom Get All Funds (Selected Fields Only)
+const getAllFundsSummary = async (_req: Request, res: Response) => {
+  try {
+    const funds = await MutualFund.find({}, {
+      fundName: 1,
+      fundNav: 1,
+      monthlySip: 1,
+      sipStartDate: 1,
+      sipStatus: 1,
+      assetclass: 1,
+      fundtype: 1,
+      totalAmountInvested: 1,
+      totalUnitsHeld: 1,
+      platform: 1,
+      currentAmount: 1, // This is the 'currentinvestment'
+      _id: 0
+    }).sort({ createdAt: -1 });
+
+    // Rename currentAmount to currentinvestment in the response
+    const result = funds.map((f: any) => ({
+      fundName: f.fundName,
+      fundNav: f.fundNav,
+      monthlySip: f.monthlySip,
+      sipStartDate: f.sipStartDate,
+      sipStatus: f.sipStatus,
+      assetclass: f.assetclass,
+      fundtype: f.fundtype,
+      totalAmountInvested: f.totalAmountInvested,
+      totalUnitsHeld: f.totalUnitsHeld,
+      platform: f.platform,
+      currentinvestment: f.currentAmount,
+    }));
+
+    return res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    console.error('❌ Error in getAllFundsSummary:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // Get By Name
 const getFundByName = async (req: Request<{ name: string }>, res: Response) => {
   try {
@@ -307,6 +349,39 @@ const getPortfolioSummary = async (_req: Request, res: Response) => {
   }
 };
 
+// Get Fund Allocation (for Pie Chart)
+const getFundAllocation = async (_req: Request, res: Response) => {
+  try {
+    const funds = await MutualFund.find({}, { fundName: 1, currentAmount: 1, _id: 0 });
+    const allocation = funds.map((f: any) => ({
+      fundName: f.fundName,
+      amount: parseFloat(f.currentAmount || '0'),
+    }));
+    return res.status(200).json({ success: true, data: allocation });
+  } catch (err) {
+    console.error('❌ Error in getFundAllocation:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Get Assetclass Allocation (for Pie Chart)
+const getAssetclassAllocation = async (_req: Request, res: Response) => {
+  try {
+    const funds = await MutualFund.find({}, { assetclass: 1, currentAmount: 1, _id: 0 });
+    const allocationMap: Record<string, number> = {};
+    for (const f of funds) {
+      const asset = f.assetclass || 'Unknown';
+      const amt = parseFloat(f.currentAmount || '0');
+      allocationMap[asset] = (allocationMap[asset] || 0) + amt;
+    }
+    const allocation = Object.entries(allocationMap).map(([assetclass, amount]) => ({ assetclass, amount }));
+    return res.status(200).json({ success: true, data: allocation });
+  } catch (err) {
+    console.error('❌ Error in getAssetclassAllocation:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // ------------------ Export ------------------
 
 export {
@@ -314,6 +389,9 @@ export {
   addLumpsum,
   updateSipStatus,
   getAllFunds,
-  getFundByName,
+
   getPortfolioSummary,
+  getAllFundsSummary,
+  getFundAllocation,
+  getAssetclassAllocation,
 };

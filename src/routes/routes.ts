@@ -63,14 +63,16 @@ router.post("/aggregate/yearly", async (_req, res) => {
 
 
 // ─────────────────────── Mutual Funds Related ─────────────────────── //
-const { addFund, getAllFunds, getFundByName, getPortfolioSummary, addLumpsum, updateSipStatus } = require("../controllers/mfController");
+const { addFund, getAllFunds, getPortfolioSummary, addLumpsum, updateSipStatus, getAllFundsSummary, getFundAllocation, getAssetclassAllocation } = require("../controllers/mfController");
 
 router.post("/add-mutual-fund", addFund);
 router.get("/all-mutual-fund/", getAllFunds);
-router.get("/select-mutual-fund/:name", getFundByName);
 router.post('/funds/lumpsum', addLumpsum);        
 router.put('/funds/sip-status', updateSipStatus);
 router.get("/get-summary", getPortfolioSummary);
+router.get("/get-allfunds-summary", getAllFundsSummary);
+router.get("/get-fund-allocation", getFundAllocation);
+router.get("/get-asset-allocation", getAssetclassAllocation);
 
 
 // ─────────────────────── Target Related ─────────────────────── //
