@@ -32,4 +32,16 @@ const importTransaction = async (_req: Request, res: Response) => {
   }
 };
 
-module.exports = { importTransaction };
+// Get all transactions, sorted by latest
+const getAllTransactions = async (_req: Request, res: Response) => {
+  try {
+    // Sort by 'date' descending. Adjust field if your model uses 'createdAt' or similar.
+    const transactions = await PreTransaction.find().sort({ date: -1 });
+    return res.status(200).json(transactions);
+  } catch (err) {
+    console.error("Error fetching transactions:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+module.exports = { importTransaction, getAllTransactions };

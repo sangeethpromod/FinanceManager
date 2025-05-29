@@ -15,6 +15,8 @@ router.get("/all-transactions", getAllTransactions);
 // ─────────────────────── Agents Related ─────────────────────── //
 const { importTransaction } = require("../controllers/dbquerryAgentController");
 router.post("/import-transaction", importTransaction);
+router.get("/get-all-transactions-messages", getAllTransactions);
+
 
 const { getMFInvestmentAdvice } = require("../agent/mfAnalyzerAgent");
 router.get("/mf-analyze", getMFInvestmentAdvice);
@@ -98,5 +100,12 @@ router.post("/create-party-map", createPartyMap);             //Create mapping
 router.get("/party-map-unmapped", getUnmappedParties); //Get unknown parties
 router.put("/update-party-map/:id", updatePartyMap);       //Update a mapping
 router.get("/get-allparty-map", getAllMappings);              //List all mappings
+
+
+
+// ─────────────────────── Finance Related ─────────────────────── //
+
+const { getAllFinanceTransactions } = require("../controllers/financeController");
+router.get("/get-all-transactions",  getAllFinanceTransactions);
 
 export default router;
