@@ -9,6 +9,8 @@ const financeSchema = new mongoose.Schema({
   category: { type: String, required: true },
   label: { type: String, required: false },
   type: { type: String, required: true },
+  date: { type: String, required: true },
+  time: { type: String, required: true },
   note: { type: String },
   comment: { type: String },
   createdAt: { type: Date, default: Date.now, expires: 60 * 60 * 24 * 14 },

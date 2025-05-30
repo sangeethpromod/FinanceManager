@@ -42,6 +42,8 @@ From the given SMS message, extract and return strictly valid JSON with these ke
 - category (auto-tag expense category: food, travel, etc.)
 - comment (leave it empty)
 - type (one of: "credit", "debit")
+- date (convert date like '30-05-2025' → '30 May 2025')
+- time (extract time like '13:04:50' → '13:04')
 
 Rules:
 - If sender_or_receiver is missing, use:
@@ -52,30 +54,38 @@ Rules:
 Example input:
 "Rs 15.00 debited via UPI on 21-05-2025 17:55:11 to VPA reyvanthrm@okaxis.Ref No 550730368484.Small txns?Use UPI Lite!-Federal Bank"
 
+Example output:
+{
+  "amount": 15,
+  "account": "Federal Bank",
+  "sender_or_receiver": "reyvanthrm@okaxis",
+  "note": "debited via UPI on 21-05-2025 17:55:11 to VPA reyvanthrm@okaxis.Ref No 550730368484.Small txns?Use UPI Lite!",
+  "category": "food",
+  "comment": "",
+  "type": "debit",
+  "date": "21 May 2025",
+  "time": "17:55"
+}
+
 Now extract JSON from this message:
 "${txn.message}"
 `;
 
+   
     try {
       const result = await model.generateContent(prompt);
       const text = result.response.text();
-
-      console.log(`📩 Raw Response:\n${text}`);
 
       const cleanText = text.trim().replace(/^```json|```$/gim, '').trim();
       const parsed = JSON.parse(cleanText);
 
       console.log("✅ Parsed Result:", parsed);
 
-      // Check for party → category + label mapping
       const partyMap = await PartyCategoryMapAgent.findOne({ party: parsed.sender_or_receiver });
 
       const finalCategory = partyMap ? partyMap.category : parsed.category;
       const finalLabel = partyMap ? partyMap.label : parsed.sender_or_receiver;
 
-      console.log(`📌 Using Category: ${finalCategory}, Label: ${finalLabel}`);
-
-      // Save the finance record
       await Finance.create({
         uuid: txn.uuid,
         amount: parsed.amount,
@@ -86,13 +96,14 @@ Now extract JSON from this message:
         category: finalCategory,
         comment: parsed.comment,
         type: parsed.type,
+        date: parsed.date,
+        time: parsed.time,
       });
 
       console.log(`💾 Saved transaction UUID ${txn.uuid} to Finance DB.`);
 
       await updateBalance(parsed.account, parsed.amount, parsed.type);
       console.log(`💰 Updated balance for ${parsed.account}.\n`);
-
     } catch (err) {
       console.error(`❌ Failed to process transaction UUID ${txn.uuid}:`, err, "\n");
     }

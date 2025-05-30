@@ -108,4 +108,7 @@ router.get("/get-allparty-map", getAllMappings);              //List all mapping
 const { getAllFinanceTransactions } = require("../controllers/financeController");
 router.get("/get-all-transactions",  getAllFinanceTransactions);
 
+// ─────────────────────── Indices Related ─────────────────────── //
+const { getRealTimeIndices } = require("../controllers/Indices");
+router.get("/get-realtime-indices", getRealTimeIndices);
 export default router;
