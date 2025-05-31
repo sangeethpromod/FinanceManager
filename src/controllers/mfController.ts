@@ -286,23 +286,6 @@ const getAllFundsSummary = async (_req: Request, res: Response) => {
 };
 
 // Get By Name
-const getFundByName = async (req: Request<{ name: string }>, res: Response) => {
-  try {
-    const { name } = req.params;
-    const fund = await MutualFund.findOne({ fundName: name });
-
-    if (!fund) {
-      return res.status(404).json({ status: "error", message: "Not found" });
-    }
-
-    res.json({ status: "ok", data: fund });
-    return;
-  } catch (err: any) {
-    res.status(500).json({ status: "error", message: err.message });
-    return;
-  }
-};
-
 // Portfolio Summary
 const getPortfolioSummary = async (_req: Request, res: Response) => {
   try {
