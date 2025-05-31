@@ -1,84 +1,70 @@
 import { Request, Response } from "express";
-const PartyCategoryMap = require("../models/partyCategoryMap");
+const PartyCategoryMap = require("../models/partyCategoryMap")
 const { bulkUpdateFinanceCategory } = require("../services/mappingService");
 
+// Create or update mapping for a category
 const createPartyMap = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { 
-      parties, 
-      label, 
-      category, 
-      description, 
-      status 
-    }: { 
-      parties: string[]; 
-      label: string; 
-      category: string; 
-      description?: string; 
-      status?: string; 
+    const {
+      category,
+      mappings,
+      description,
+      status
+    }: {
+      category: string;
+      mappings: { label: string; parties: string[] }[];
+      description?: string;
+      status?: string;
     } = req.body;
 
-    // Validate that parties array is provided and not empty
-    if (!parties || !Array.isArray(parties) || parties.length === 0) {
-      res.status(400).json({ message: "Parties array is required and cannot be empty." });
+    if (!category || !Array.isArray(mappings) || mappings.length === 0) {
+      res.status(400).json({ message: "category and mappings[] are required." });
       return;
     }
 
-    // Find existing mapping by label + category
-    const existingMapping = await PartyCategoryMap.findOne({ label, category });
+    // Fetch or create base doc
+    let mappingDoc = await PartyCategoryMap.findOne({ category });
 
-    if (existingMapping) {
-      // Check if any of the parties already exist
-      const existingParties = parties.filter(party => existingMapping.parties.includes(party));
-      
-      if (existingParties.length > 0) {
-        res.status(409).json({ 
-          message: "Some parties already exist in this mapping", 
-          existingParties 
-        });
-        return;
+    if (!mappingDoc) {
+      mappingDoc = await PartyCategoryMap.create({
+        category,
+        mappings: [],
+        description: description || "",
+        status: status || "ACTIVE",
+      });
+    }
+
+    for (const map of mappings) {
+      const { label, parties } = map;
+
+      if (!label || !Array.isArray(parties) || parties.length === 0) continue;
+
+      const labelIdx = mappingDoc.mappings.findIndex((m: any) => m.label === label);
+
+      if (labelIdx >= 0) {
+        const existingParties = mappingDoc.mappings[labelIdx].parties;
+        mappingDoc.mappings[labelIdx].parties = Array.from(new Set([...existingParties, ...parties]));
+      } else {
+        mappingDoc.mappings.push({ label, parties });
       }
 
-      // Add new parties to existing mapping
-      existingMapping.parties.push(...parties);
-      
-      // Update other fields if provided
-      if (description) existingMapping.description = description;
-      if (status) existingMapping.status = status;
-      
-      await existingMapping.save();
-
-      // Update finance categories for all parties
+      // Update each party's finance category
       for (const party of parties) {
         await bulkUpdateFinanceCategory(party, label, category);
       }
-
-      res.status(200).json({ 
-        message: "Parties added to existing mapping", 
-        mapping: existingMapping 
-      });
-      return;
     }
 
-    // If no existing mapping, create new one
-    const newMapping = await PartyCategoryMap.create({
-      parties: parties,
-      label,
-      category,
-      description: description || "",
-      status: status || "ACTIVE"
-    });
+    if (description) mappingDoc.description = description;
+    if (status) mappingDoc.status = status;
 
-    // Update finance categories for all parties
-    for (const party of parties) {
-      await bulkUpdateFinanceCategory(party, label, category);
-    }
+    await mappingDoc.save();
 
-    res.status(201).json(newMapping);
+    res.status(201).json(mappingDoc);
   } catch (err: any) {
     res.status(500).json({ error: "Failed to create mapping", details: err.message });
   }
 };
+
 
 // Get all current mappings
 const getAllMappings = async (_req: Request, res: Response): Promise<void> => {
@@ -90,50 +76,47 @@ const getAllMappings = async (_req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Update existing mapping
+// Update existing mapping (by category and label)
 const updatePartyMap = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params; // Changed from party to id since we're dealing with arrays
-    const { 
-      parties, 
-      label, 
-      category, 
-      description, 
-      status 
-    }: { 
-      parties?: string[]; 
-      label?: string; 
-      category?: string; 
-      description?: string; 
-      status?: string; 
+    const { category, label, parties, description, status }: {
+      category: string;
+      label: string;
+      parties?: string[];
+      description?: string;
+      status?: string;
     } = req.body;
 
-    const updateData: any = {};
-    if (parties) updateData.parties = parties;
-    if (label) updateData.label = label;
-    if (category) updateData.category = category;
-    if (description !== undefined) updateData.description = description;
-    if (status) updateData.status = status;
-
-    const mapping = await PartyCategoryMap.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true }
-    );
-
-    if (!mapping) {
-      res.status(404).json({ message: "Mapping not found." });
+    if (!category || !label) {
+      res.status(400).json({ message: "category and label are required." });
       return;
     }
 
-    // Update finance categories for all parties if they changed
-    if (parties && label && category) {
+    const mappingDoc = await PartyCategoryMap.findOne({ category });
+    if (!mappingDoc) {
+      res.status(404).json({ message: "Mapping category not found." });
+      return;
+    }
+    const labelIdx = mappingDoc.mappings.findIndex((m: any) => m.label === label);
+    if (labelIdx === -1) {
+      res.status(404).json({ message: "Label not found in category." });
+      return;
+    }
+    if (parties) {
+      mappingDoc.mappings[labelIdx].parties = Array.from(new Set(parties));
+    }
+    if (description !== undefined) mappingDoc.description = description;
+    if (status) mappingDoc.status = status;
+    await mappingDoc.save();
+
+    // Update finance categories for all parties
+    if (parties) {
       for (const party of parties) {
         await bulkUpdateFinanceCategory(party, label, category);
       }
     }
 
-    res.status(200).json(mapping);
+    res.status(200).json(mappingDoc);
   } catch (err: any) {
     res.status(500).json({ error: "Failed to update mapping", details: err.message });
   }
@@ -142,27 +125,23 @@ const updatePartyMap = async (req: Request, res: Response): Promise<void> => {
 // Get all distinct parties from Finance not mapped yet
 const getUnmappedParties = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const Finance = require("../models/financeModel"); // Make sure to import Finance model
-    
+    const Finance = require("../models/financeModel");
     const allParties = await Finance.distinct("party");
-    const mappedParties = await PartyCategoryMap.distinct("parties"); // Changed from "party" to "parties"
-
-    // Flatten the mapped parties array since it's now an array of arrays
-    const flatMappedParties = mappedParties.flat();
-
+    const mappings = await PartyCategoryMap.find({});
+    // Flatten all parties from all mappings
+    const mappedParties = mappings.flatMap((doc: any) => doc.mappings.flatMap((m: any) => m.parties));
     const unmapped: string[] = (allParties as string[]).filter(
-      (party: string) => !flatMappedParties.includes(party)
+      (party: string) => !mappedParties.includes(party)
     );
-
     res.status(200).json({ unmappedParties: unmapped });
   } catch (err: any) {
     res.status(500).json({ error: "Failed to fetch unmapped parties", details: err.message });
   }
 };
 
-module.exports = { 
-  createPartyMap, 
-  getUnmappedParties, 
-  updatePartyMap, 
-  getAllMappings 
+module.exports = {
+  createPartyMap,
+  getUnmappedParties,
+  updatePartyMap,
+  getAllMappings,
 };

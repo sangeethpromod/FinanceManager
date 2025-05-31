@@ -86,23 +86,6 @@ router.get("/target-comparison", getTargetComparison);
 
 
 
-// ─────────────────────── Category Related ─────────────────────── //
-const { createCategory, getAllCategories } = require("../controllers/categoryController");
-router.post("/create-category", createCategory);
-router.get("/getall-category", getAllCategories);
-
-
-
-// ─────────────────────── Category Related ─────────────────────── //
-const { createPartyMap, getUnmappedParties, updatePartyMap, getAllMappings} = require("../controllers/partyMapController");
-
-router.post("/create-party-map", createPartyMap);             //Create mapping
-router.get("/party-map-unmapped", getUnmappedParties); //Get unknown parties
-router.put("/update-party-map/:id", updatePartyMap);       //Update a mapping
-router.get("/get-allparty-map", getAllMappings);              //List all mappings
-
-
-
 // ─────────────────────── Finance Related ─────────────────────── //
 
 const { getAllFinanceTransactions } = require("../controllers/financeController");
@@ -111,4 +94,13 @@ router.get("/get-all-transactions",  getAllFinanceTransactions);
 // ─────────────────────── Indices Related ─────────────────────── //
 const { getRealTimeIndices } = require("../controllers/Indices");
 router.get("/get-realtime-indices", getRealTimeIndices);
+
+// ─────────────────────── Party Map Related ─────────────────────── //
+const { createPartyMap, getUnmappedParties, updatePartyMap, getAllMappings } = require("../controllers/partyMapController");
+
+router.post("/create-party-map", createPartyMap); // Create or update mapping for a category
+router.get("/party-map-unmapped", getUnmappedParties); // Get unknown/unmapped parties
+router.put("/update-party-map", updatePartyMap); // Update mapping by category and label
+router.get("/get-allparty-map", getAllMappings); // List all mappings
+
 export default router;

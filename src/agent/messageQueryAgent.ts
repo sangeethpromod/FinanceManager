@@ -81,10 +81,22 @@ Now extract JSON from this message:
 
       console.log("✅ Parsed Result:", parsed);
 
-      const partyMap = await PartyCategoryMapAgent.findOne({ party: parsed.sender_or_receiver });
+      // Find mapping for this party in any category/label
+      const mappingDoc = await PartyCategoryMapAgent.findOne({
+        status: "ACTIVE",
+        mappings: { $elemMatch: { parties: parsed.sender_or_receiver } }
+      });
 
-      const finalCategory = partyMap ? partyMap.category : parsed.category;
-      const finalLabel = partyMap ? partyMap.label : parsed.sender_or_receiver;
+      let finalCategory = parsed.category;
+      let finalLabel = parsed.sender_or_receiver;
+      if (mappingDoc) {
+        // Find the label/category for this party
+        const found = mappingDoc.mappings.find((m: any) => m.parties.includes(parsed.sender_or_receiver));
+        if (found) {
+          finalCategory = mappingDoc.category;
+          finalLabel = found.label;
+        }
+      }
 
       await Finance.create({
         uuid: txn.uuid,

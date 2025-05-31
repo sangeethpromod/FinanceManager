@@ -1,17 +1,21 @@
 import mongoose from "mongoose";
 
-const partyCategoryMapSchema = new mongoose.Schema({
-  parties: [String], // Changed from 'party' to 'parties' to match the request body
-  label: { type: String, required: true }, // e.g., "Trans Asia Cafe"
-  category: { type: String, required: true }, // e.g., "Food"
-  description: { type: String, default: "" }, // Optional notes, metadata
+const mappingSchema = new mongoose.Schema({
+  category: { type: String, required: true },
+  mappings: [
+    {
+      label: { type: String, required: true },
+      parties: [{ type: String, required: true }],
+    },
+  ],
+  description: { type: String, default: "" },
   status: {
     type: String,
     enum: ['ACTIVE', 'INACTIVE'],
-    default: 'ACTIVE'
-  }
+    default: 'ACTIVE',
+  },
 }, { timestamps: true });
 
-const PartyCategoryMap = mongoose.model("PartyCategoryMap", partyCategoryMapSchema);
+const PartyCategoryMap = mongoose.model("PartyCategoryMap", mappingSchema);
 
 module.exports = PartyCategoryMap;
