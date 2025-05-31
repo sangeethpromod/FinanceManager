@@ -103,6 +103,41 @@ const runAggregation = async (period: Period): Promise<string> => {
   }
 };
 
+// Helper to get start/end for a specific date (daily)
+const getStartEndForDate = (dateStr: string): { start: Date; end: Date } => {
+  const dt = DateTime.fromISO(dateStr, { zone: "local" });
+  if (!dt.isValid) throw new Error("Invalid date format. Use YYYY-MM-DD");
+  return {
+    start: dt.startOf("day").toUTC().toJSDate(),
+    end: dt.endOf("day").toUTC().toJSDate(),
+  };
+};
+
+// Custom daily aggregation for a specific date
+const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
+  try {
+    const { start, end } = getStartEndForDate(dateStr);
+    const results: CategoryAggregation[] = await FinanceAggregation.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: "$category", totalAmount: { $sum: { $toDouble: "$amount" } } } },
+    ]);
+    const totalAmount: number = results.reduce((acc, cur) => acc + cur.totalAmount, 0);
+    const categories: AggregationCategory[] = results.map((item) => ({
+      category: item._id,
+      totalAmount: item.totalAmount,
+    }));
+    await AggregationAnalyticsRun.updateOne(
+      { date: DateTime.fromISO(dateStr).startOf("day").toJSDate(), type: "daily" },
+      { $set: { totalAmount, categories } },
+      { upsert: true }
+    );
+    return `✅ Custom daily aggregation complete for ${dateStr}. Total: ₹${totalAmount}. Categories: ${results.length}`;
+  } catch (error) {
+    console.error(`❌ Custom daily aggregation failed for ${dateStr}:`, error);
+    throw error;
+  }
+};
+
 // Exporting individual functions to use in API + cron
 module.exports = {
   runAggregation,
@@ -111,4 +146,5 @@ module.exports = {
   aggregateMonthly: () => runAggregation("monthly"),
   aggregateQuarterly: () => runAggregation("quarterly"),
   aggregateYearly: () => runAggregation("yearly"),
+  aggregateDailyCustom, // export the new function
 };

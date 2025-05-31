@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 const router = express.Router();
 
 // ─────────────────────── Transaction Related ─────────────────────── //
@@ -35,8 +35,10 @@ const {
   aggregateWeekly,
   aggregateMonthly,
   aggregateQuarterly,
+  aggregateDailyCustom,
   aggregateYearly
 } = require("../controllers/aggregationController");
+
 
 router.post("/aggregate/daily", async (_req, res) => {
   const msg = await aggregateDaily();
@@ -62,6 +64,24 @@ router.post("/aggregate/yearly", async (_req, res) => {
   const msg = await aggregateYearly();
   res.send({ status: "ok", message: msg });
 });
+
+router.post("/aggregate/daily/custom", async (req: Request, res: Response) => {
+  try {
+    const { date } = req.body;
+    if (!date) {
+      res.status(400).send({ status: "error", message: "Missing 'date' in request body" });
+      return;
+    }
+
+    const msg = await aggregateDailyCustom(date);
+    res.send({ status: "ok", message: msg });
+  } catch (err: any) {
+    console.error("❌ Error in /aggregate/daily/custom:", err);
+    res.status(500).send({ status: "error", message: err.message || 'Unknown error' });
+  }
+});
+
+
 
 
 // ─────────────────────── Mutual Funds Related ─────────────────────── //
