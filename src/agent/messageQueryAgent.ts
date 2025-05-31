@@ -1,7 +1,6 @@
 const PreTransaction = require("../models/txnModel");
 const Finance = require("../models/financeModel");
 const PartyCategoryMapAgent = require("../models/partyCategoryMap");
-const { v4: uuidv4 } = require("uuid");
 const { getGeminiModel } = require("../agentConfig/agentic_initialization");
 const { updateBalance } = require("../services/accountService");
 
@@ -14,15 +13,34 @@ function getTodayDate() {
   return `${d}/${m}/${y}`;
 }
 
-const DataExtractor_Agent = async () => {
+interface PartyMapping {
+  label: string;
+  parties: string[];
+}
+
+interface MappingDoc {
+  category: string;
+  mappings: PartyMapping[];
+  status: string;
+}
+
+// Accept a single transaction as argument for targeted processing
+const DataExtractor_Agent = async (txnArg: any) => {
   const model = getGeminiModel();
-  const today = getTodayDate();
 
-  console.log(`🚀 Fetching transactions for today: ${today}`);
-  const todaysTxns = await PreTransaction.find({ date: today });
-  console.log(`🔎 Found ${todaysTxns.length} transactions for today.`);
+  let txnsToProcess = [];
+  if (txnArg) {
+    // If a transaction object is passed, process only that
+    txnsToProcess = [txnArg];
+  } else {
+    // Fallback: process all for today (legacy/batch mode)
+    const today = getTodayDate();
+    console.log(`🚀 Fetching transactions for today: ${today}`);
+    txnsToProcess = await PreTransaction.find({ date: today });
+    console.log(`🔎 Found ${txnsToProcess.length} transactions for today.`);
+  }
 
-  for (const txn of todaysTxns) {
+  for (const txn of txnsToProcess) {
     const exists = await Finance.findOne({ uuid: txn.uuid });
     if (exists) {
       console.log(`⏭️ Skipping transaction UUID ${txn.uuid} (already processed)`);
@@ -71,7 +89,6 @@ Now extract JSON from this message:
 "${txn.message}"
 `;
 
-   
     try {
       const result = await model.generateContent(prompt);
       const text = result.response.text();
@@ -79,19 +96,16 @@ Now extract JSON from this message:
       const cleanText = text.trim().replace(/^```json|```$/gim, '').trim();
       const parsed = JSON.parse(cleanText);
 
-      console.log("✅ Parsed Result:", parsed);
-
-      // Find mapping for this party in any category/label
-      const mappingDoc = await PartyCategoryMapAgent.findOne({
-        status: "ACTIVE",
-        mappings: { $elemMatch: { parties: parsed.sender_or_receiver } }
-      });
-
+   const mappingDoc: MappingDoc | null = await PartyCategoryMapAgent.findOne({
+  status: "ACTIVE",
+  mappings: { $elemMatch: { parties: parsed.sender_or_receiver } }
+});
       let finalCategory = parsed.category;
       let finalLabel = parsed.sender_or_receiver;
       if (mappingDoc) {
-        // Find the label/category for this party
-        const found = mappingDoc.mappings.find((m: any) => m.parties.includes(parsed.sender_or_receiver));
+        const found = mappingDoc.mappings.find((m) =>
+  m.parties.includes(parsed.sender_or_receiver)
+);
         if (found) {
           finalCategory = mappingDoc.category;
           finalLabel = found.label;
@@ -121,7 +135,9 @@ Now extract JSON from this message:
     }
   }
 
-  console.log("🎉 Processing completed for today’s transactions.\n");
+  if (!txnArg) {
+    console.log("🎉 Processing completed for today’s transactions.\n");
+  }
 };
 
 module.exports = { DataExtractor_Agent };

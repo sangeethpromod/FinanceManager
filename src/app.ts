@@ -3,6 +3,11 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db";
 import transactionRoutes from "./routes/routes";
+const startTxnWatcher = require("./listeners/txnWatcher");
+
+
+
+
 
 dotenv.config();
 const app = express();
@@ -26,7 +31,8 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   await connectDB();
   console.log(`🚀 Server running on port ${PORT}`);
-
+// After mongoose.connect(...)
+  startTxnWatcher();
   // Initialize cron jobs after server starts
   require("./crone/aggregateCrone");
 });
