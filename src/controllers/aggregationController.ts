@@ -5,7 +5,7 @@ const AggregationAnalyticsRun = require("../models/analyticsAggeragteModel");
 type Period = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
 const getStartEndDates = (period: Period): { start: Date; end: Date } => {
-  const now = DateTime.local(); // local time
+  const now = DateTime.utc(); // use UTC time
 
   let start: DateTime;
   let end: DateTime;
@@ -15,35 +15,31 @@ const getStartEndDates = (period: Period): { start: Date; end: Date } => {
       start = now.startOf("day");
       end = now.endOf("day");
       break;
-
     case "weekly":
       start = now.startOf("week");
       end = now.endOf("week");
       break;
-
     case "monthly":
       start = now.startOf("month");
       end = now.endOf("month");
       break;
-
-    case "quarterly":
+    case "quarterly": {
       const quarter = Math.floor((now.month - 1) / 3) + 1;
-      start = DateTime.local(now.year, (quarter - 1) * 3 + 1, 1).startOf("day");
+      start = DateTime.utc(now.year, (quarter - 1) * 3 + 1, 1).startOf("day");
       end = start.plus({ months: 3 }).minus({ days: 1 }).endOf("day");
       break;
-
+    }
     case "yearly":
       start = now.startOf("year");
       end = now.endOf("year");
       break;
-
     default:
       throw new Error("Invalid period");
   }
 
   return {
-    start: start.toUTC().toJSDate(), // convert to UTC for MongoDB
-    end: end.toUTC().toJSDate(),
+    start: start.toJSDate(), // already UTC
+    end: end.toJSDate(),
   };
 };
 
@@ -86,7 +82,7 @@ const runAggregation = async (period: Period): Promise<string> => {
     }));
 
     await AggregationAnalyticsRun.updateOne(
-      { date: DateTime.local().startOf("day").toJSDate(), type: period },
+      { date: DateTime.utc().startOf("day").toJSDate(), type: period },
       {
         $set: {
           totalAmount,
@@ -105,11 +101,11 @@ const runAggregation = async (period: Period): Promise<string> => {
 
 // Helper to get start/end for a specific date (daily)
 const getStartEndForDate = (dateStr: string): { start: Date; end: Date } => {
-  const dt = DateTime.fromISO(dateStr, { zone: "local" });
+  const dt = DateTime.fromISO(dateStr, { zone: "utc" });
   if (!dt.isValid) throw new Error("Invalid date format. Use YYYY-MM-DD");
   return {
-    start: dt.startOf("day").toUTC().toJSDate(),
-    end: dt.endOf("day").toUTC().toJSDate(),
+    start: dt.startOf("day").toJSDate(),
+    end: dt.endOf("day").toJSDate(),
   };
 };
 
@@ -127,7 +123,7 @@ const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
       totalAmount: item.totalAmount,
     }));
     await AggregationAnalyticsRun.updateOne(
-      { date: DateTime.fromISO(dateStr).startOf("day").toJSDate(), type: "daily" },
+      { date: DateTime.fromISO(dateStr, { zone: "utc" }).startOf("day").toJSDate(), type: "daily" },
       { $set: { totalAmount, categories } },
       { upsert: true }
     );
