@@ -1,4 +1,4 @@
-# FinanceManager
+# Catalyst-Backend
 
 ## API Endpoints
 
