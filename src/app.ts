@@ -13,13 +13,24 @@ dotenv.config();
 const app = express();
 
 // CORS: Allow frontend on port 3000
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://catalyst.sangeethpromod.in"
+];
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
-
 // Middleware
 app.use(express.json());
 
