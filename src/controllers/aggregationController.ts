@@ -2,46 +2,8 @@ import { DateTime } from "luxon";
 const FinanceAggregation = require("../models/financeModel");
 const AggregationAnalyticsRun = require("../models/analyticsAggeragteModel");
 
+
 type Period = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
-
-const getStartEndDates = (period: Period): { start: Date; end: Date } => {
-  const now = DateTime.utc(); // use UTC time
-
-  let start: DateTime;
-  let end: DateTime;
-
-  switch (period) {
-    case "daily":
-      start = now.startOf("day");
-      end = now.endOf("day");
-      break;
-    case "weekly":
-      start = now.startOf("week");
-      end = now.endOf("week");
-      break;
-    case "monthly":
-      start = now.startOf("month");
-      end = now.endOf("month");
-      break;
-    case "quarterly": {
-      const quarter = Math.floor((now.month - 1) / 3) + 1;
-      start = DateTime.utc(now.year, (quarter - 1) * 3 + 1, 1).startOf("day");
-      end = start.plus({ months: 3 }).minus({ days: 1 }).endOf("day");
-      break;
-    }
-    case "yearly":
-      start = now.startOf("year");
-      end = now.endOf("year");
-      break;
-    default:
-      throw new Error("Invalid period");
-  }
-
-  return {
-    start: start.toJSDate(), // already UTC
-    end: end.toJSDate(),
-  };
-};
 
 interface CategoryAggregation {
   _id: string;
@@ -53,14 +15,76 @@ interface AggregationCategory {
   totalAmount: number;
 }
 
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+const getStartEndDates = (period: Period): { range: DateRange; labelDate: DateTime } => {
+  const now = DateTime.utc();
+
+  let labelDate: DateTime;
+  let start: DateTime;
+  let end: DateTime;
+
+  switch (period) {
+    case "daily":
+      labelDate = now.minus({ days: 1 });
+      start = labelDate.startOf("day");
+      end = labelDate.endOf("day");
+      break;
+    case "weekly":
+      labelDate = now.minus({ weeks: 1 }).startOf("week");
+      start = labelDate;
+      end = labelDate.endOf("week");
+      break;
+    case "monthly":
+      labelDate = now.minus({ months: 1 }).startOf("month");
+      start = labelDate;
+      end = labelDate.endOf("month");
+      break;
+    case "quarterly": {
+      const current = now.minus({ months: 3 });
+      const quarter = Math.floor((current.month - 1) / 3) + 1;
+      const monthStart = (quarter - 1) * 3 + 1;
+      labelDate = DateTime.utc(current.year, monthStart, 1);
+      start = labelDate;
+      end = labelDate.plus({ months: 3 }).minus({ days: 1 }).endOf("day");
+      break;
+    }
+    case "yearly":
+      labelDate = now.minus({ years: 1 }).startOf("year");
+      start = labelDate;
+      end = labelDate.endOf("year");
+      break;
+    default:
+      throw new Error("Invalid period");
+  }
+
+  return {
+    range: { start: start.toJSDate(), end: end.toJSDate() },
+    labelDate,
+  };
+};
+
+const buildMetaFields = (type: Period, labelDate: DateTime) => {
+  return {
+    formattedDate: labelDate.toFormat("dd LLL yyyy"),
+    week: `Week ${labelDate.weekNumber}`,
+    month: labelDate.toFormat("LLLL"),
+    quarter: `Q${Math.ceil(labelDate.month / 3)}`,
+    year: labelDate.year,
+  };
+};
+
 const runAggregation = async (period: Period): Promise<string> => {
   try {
-    const { start, end } = getStartEndDates(period);
+    const { range, labelDate } = getStartEndDates(period);
 
     const results: CategoryAggregation[] = await FinanceAggregation.aggregate([
       {
         $match: {
-          createdAt: { $gte: start, $lte: end },
+          createdAt: { $gte: range.start, $lte: range.end },
         },
       },
       {
@@ -71,22 +95,21 @@ const runAggregation = async (period: Period): Promise<string> => {
       },
     ]);
 
-    const totalAmount: number = results.reduce(
-      (acc: number, cur: CategoryAggregation) => acc + cur.totalAmount,
-      0
-    );
-
-    const categories: AggregationCategory[] = results.map((item: CategoryAggregation) => ({
+    const totalAmount: number = results.reduce((acc, cur) => acc + cur.totalAmount, 0);
+    const categories: AggregationCategory[] = results.map(item => ({
       category: item._id,
       totalAmount: item.totalAmount,
     }));
 
+    const meta = buildMetaFields(period, labelDate);
+
     await AggregationAnalyticsRun.updateOne(
-      { date: DateTime.utc().startOf("day").toJSDate(), type: period },
+      { type: period, date: labelDate.startOf("day").toJSDate() },
       {
         $set: {
           totalAmount,
           categories,
+          ...meta,
         },
       },
       { upsert: true }
@@ -99,34 +122,48 @@ const runAggregation = async (period: Period): Promise<string> => {
   }
 };
 
-// Helper to get start/end for a specific date (daily)
-const getStartEndForDate = (dateStr: string): { start: Date; end: Date } => {
+const getStartEndForDate = (dateStr: string): { dt: DateTime; range: DateRange } => {
   const dt = DateTime.fromISO(dateStr, { zone: "utc" });
   if (!dt.isValid) throw new Error("Invalid date format. Use YYYY-MM-DD");
+
   return {
-    start: dt.startOf("day").toJSDate(),
-    end: dt.endOf("day").toJSDate(),
+    dt,
+    range: {
+      start: dt.startOf("day").toJSDate(),
+      end: dt.endOf("day").toJSDate(),
+    },
   };
 };
 
-// Custom daily aggregation for a specific date
 const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
   try {
-    const { start, end } = getStartEndForDate(dateStr);
+    const { dt, range } = getStartEndForDate(dateStr);
+
     const results: CategoryAggregation[] = await FinanceAggregation.aggregate([
-      { $match: { createdAt: { $gte: start, $lte: end } } },
+      { $match: { createdAt: { $gte: range.start, $lte: range.end } } },
       { $group: { _id: "$category", totalAmount: { $sum: { $toDouble: "$amount" } } } },
     ]);
+
     const totalAmount: number = results.reduce((acc, cur) => acc + cur.totalAmount, 0);
-    const categories: AggregationCategory[] = results.map((item) => ({
+    const categories: AggregationCategory[] = results.map(item => ({
       category: item._id,
       totalAmount: item.totalAmount,
     }));
+
+    const meta = buildMetaFields("daily", dt);
+
     await AggregationAnalyticsRun.updateOne(
-      { date: DateTime.fromISO(dateStr, { zone: "utc" }).startOf("day").toJSDate(), type: "daily" },
-      { $set: { totalAmount, categories } },
+      { type: "daily", date: dt.startOf("day").toJSDate() },
+      {
+        $set: {
+          totalAmount,
+          categories,
+          ...meta,
+        },
+      },
       { upsert: true }
     );
+
     return `✅ Custom daily aggregation complete for ${dateStr}. Total: ₹${totalAmount}. Categories: ${results.length}`;
   } catch (error) {
     console.error(`❌ Custom daily aggregation failed for ${dateStr}:`, error);
@@ -134,7 +171,7 @@ const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
   }
 };
 
-// Exporting individual functions to use in API + cron
+// Export everything for cron jobs and APIs
 module.exports = {
   runAggregation,
   aggregateDaily: () => runAggregation("daily"),
@@ -142,5 +179,5 @@ module.exports = {
   aggregateMonthly: () => runAggregation("monthly"),
   aggregateQuarterly: () => runAggregation("quarterly"),
   aggregateYearly: () => runAggregation("yearly"),
-  aggregateDailyCustom, // export the new function
+  aggregateDailyCustom,
 };

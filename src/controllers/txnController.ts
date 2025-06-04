@@ -46,23 +46,6 @@ const getAllTransactions = async (_req: Request, res: Response) => {
 };
 
 
-// Delete transaction by ID
-// const deleteTransactionById = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-
-//     const txn = await Transaction.findByIdAndDelete(id);
-//     if (!txn) {
-//       return res.status(404).json({ error: "Transaction not found" });
-//     }
-
-//     return res.status(200).json({ success: true });
-//   } catch (err) {
-//     console.error("Error deleting transaction:", err);
-//     return res.status(500).json({ error: "Server error" });
-//   }
-// };
-
 module.exports = {
   createTransaction,
   getAllTransactions,

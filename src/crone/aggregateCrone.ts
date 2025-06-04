@@ -7,12 +7,11 @@ const {
   aggregateYearly
 } = require("../controllers/aggregationController");
 
-// Log on cron setup start
 console.log("🕒 Cron jobs initialization started");
 
-// Daily - Midnight
-cron.schedule("55 23 * * *", async () => {
-  console.log("🕚 Running daily aggregation (11:55 PM)");
+// 🔹 Daily - Every day at 12:00 AM (for previous day's data)
+cron.schedule("0 0 * * *", async () => {
+  console.log("🕛 Running daily aggregation (12:00 AM)");
   try {
     await aggregateDaily();
     console.log("✅ Daily aggregation completed");
@@ -21,9 +20,9 @@ cron.schedule("55 23 * * *", async () => {
   }
 });
 
-// Weekly - Monday 1AM
+// 🔹 Weekly - Every Monday at 1:00 AM (for last Monday to Sunday)
 cron.schedule("0 1 * * 1", async () => {
-  console.log("🕐 Running weekly aggregation");
+  console.log("🕐 Running weekly aggregation (1:00 AM)");
   try {
     await aggregateWeekly();
     console.log("✅ Weekly aggregation completed");
@@ -32,9 +31,9 @@ cron.schedule("0 1 * * 1", async () => {
   }
 });
 
-// Monthly - 1st day 2AM
+// 🔹 Monthly - 1st of each month at 2:00 AM (for previous month)
 cron.schedule("0 2 1 * *", async () => {
-  console.log("🕑 Running monthly aggregation");
+  console.log("🕑 Running monthly aggregation (2:00 AM)");
   try {
     await aggregateMonthly();
     console.log("✅ Monthly aggregation completed");
@@ -43,9 +42,9 @@ cron.schedule("0 2 1 * *", async () => {
   }
 });
 
-// Quarterly - 1st Jan/Apr/Jul/Oct 3AM
+// 🔹 Quarterly - Jan/Apr/Jul/Oct 1st at 3:00 AM (for previous quarter)
 cron.schedule("0 3 1 1,4,7,10 *", async () => {
-  console.log("🕒 Running quarterly aggregation");
+  console.log("🕒 Running quarterly aggregation (3:00 AM)");
   try {
     await aggregateQuarterly();
     console.log("✅ Quarterly aggregation completed");
@@ -54,9 +53,9 @@ cron.schedule("0 3 1 1,4,7,10 *", async () => {
   }
 });
 
-// Yearly - Jan 1st, 4AM
+// 🔹 Yearly - Jan 1st at 4:00 AM (for previous year)
 cron.schedule("0 4 1 1 *", async () => {
-  console.log("🕓 Running yearly aggregation");
+  console.log("🕓 Running yearly aggregation (4:00 AM)");
   try {
     await aggregateYearly();
     console.log("✅ Yearly aggregation completed");
@@ -65,24 +64,4 @@ cron.schedule("0 4 1 1 *", async () => {
   }
 });
 
-// Log on successful cron jobs initialization
 console.log("✅ Cron jobs initialized and scheduled");
-
-
-
-// const now = new Date();
-// const testHour = now.getHours();
-// const testMinute = now.getMinutes();
-
-// console.log(`🧪 Test cron job scheduled to run daily at ${testHour}:${testMinute.toString().padStart(2, '0')}`);
-
-// cron.schedule(`${testMinute} ${testHour} * * *`, async () => {
-//   console.log(`🧪 Running test cron job at ${new Date().toLocaleTimeString()}`);
-//   try {
-//     const { testAggregationSystem } = require("../controllers/aggregationController");
-//     const result = await testAggregationSystem();
-//     console.log("✅ Test result:", result);
-//   } catch (err) {
-//     console.error("❌ Test cron job error:", err);
-//   }
-// });

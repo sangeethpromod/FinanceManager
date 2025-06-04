@@ -123,4 +123,9 @@ router.get("/party-map-unmapped", getUnmappedParties); // Get unknown/unmapped p
 router.put("/update-party-map", updatePartyMap); // Update mapping by category and label
 router.get("/get-allparty-map", getAllMappings); // List all mappings
 
+// ─────────────────────── Graph Related ─────────────────────── //
+const { getDailyVsTarget } = require("../Common/dailyGraphAPI");
+router.get("/daily-graph", getDailyVsTarget);
+
+
 export default router;
