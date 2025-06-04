@@ -1,0 +1,44 @@
+name: 🚀 CI/CD to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: 🔄 Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🔐 Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🚀 Deploy via SSH
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /path/to/your/project
+
+            echo "🌀 Pulling latest code..."
+            git pull origin main
+
+            echo "🛑 Stopping old container..."
+            docker stop my-backend || true
+            docker rm my-backend || true
+
+            echo "🧼 Removing old image..."
+            docker rmi my-backend-image || true
+
+            echo "🐳 Building new Docker image..."
+            docker build -t my-backend-image .
+
+            echo "🚀 Running new container..."
+            docker run -d --name my-backend -p 3000:3000 my-backend-image
+          EOF
