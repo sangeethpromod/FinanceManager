@@ -11,8 +11,8 @@ const {
 console.log("🕒 Cron jobs initialization started");
 
 // Daily - Midnight
-cron.schedule("0 0 * * *", async () => {
-  console.log("🕛 Running daily aggregation");
+cron.schedule("55 23 * * *", async () => {
+  console.log("🕚 Running daily aggregation (11:55 PM)");
   try {
     await aggregateDaily();
     console.log("✅ Daily aggregation completed");
