@@ -1,0 +1,69 @@
+name: Dev to Test Sync and PR to Prod
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  sync-to-test:
+    name: Push Dev → Test, Run Tests, Create PR to Prod
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Fetch All
+        run: git fetch --all
+
+      - name: Checkout Test Branch
+        run: |
+          git checkout test || git checkout -b test
+          git reset --hard origin/dev
+          git push --force origin test
+
+  run-test-workflow:
+    name: Trigger test workflow on test branch
+    needs: sync-to-test
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      ref: test
+
+  create-pr-to-prod:
+    name: Create PR from test to prod
+    needs: run-test-workflow
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create PR using GitHub CLI
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: "test",
+              base: "prod",
+              state: "open",
+            });
+
+            if (pulls.length === 0) {
+              await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head: "test",
+                base: "prod",
+                title: "Promote Test → Prod",
+                body: "Auto PR created after successful tests."
+              });
+            } else {
+              console.log("PR already exists. Skipping creation.");
+            }
