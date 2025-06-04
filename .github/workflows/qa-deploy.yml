@@ -31,7 +31,7 @@ jobs:
 
             echo "🛑 Stopping old container..."
             docker stop catalyst-backend || true
-            docker rm my-backend || true
+            docker rm catalyst-backend || true
 
             echo "🧼 Removing old image..."
             docker rmi catalyst-backend || true
