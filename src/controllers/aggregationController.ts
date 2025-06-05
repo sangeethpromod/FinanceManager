@@ -67,7 +67,7 @@ const getStartEndDates = (period: Period): { range: DateRange; labelDate: DateTi
   };
 };
 
-const buildMetaFields = (type: Period, labelDate: DateTime) => {
+const buildMetaFields = (labelDate: DateTime) => {
   return {
     formattedDate: labelDate.toFormat("dd LLL yyyy"),
     week: `Week ${labelDate.weekNumber}`,
@@ -101,7 +101,7 @@ const runAggregation = async (period: Period): Promise<string> => {
       totalAmount: item.totalAmount,
     }));
 
-    const meta = buildMetaFields(period, labelDate);
+    const meta = buildMetaFields(labelDate);
 
     await AggregationAnalyticsRun.updateOne(
       { type: period, date: labelDate.startOf("day").toJSDate() },
@@ -150,7 +150,7 @@ const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
       totalAmount: item.totalAmount,
     }));
 
-    const meta = buildMetaFields("daily", dt);
+    const meta = buildMetaFields(dt);
 
     await AggregationAnalyticsRun.updateOne(
       { type: "daily", date: dt.startOf("day").toJSDate() },
