@@ -47,4 +47,5 @@ const mfSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const MutualFund = mongoose.model("MutualFund", mfSchema);
-export default MutualFund;
+
+module.exports =  MutualFund;

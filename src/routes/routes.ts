@@ -128,4 +128,10 @@ const { getDailyVsTarget } = require("../Common/dailyGraphAPI");
 router.get("/daily-graph", getDailyVsTarget);
 
 
+
+// ─────────────────────── Common API Routes ─────────────────────── //
+const { getNetWorthSummary } = require("../Common/commonapi");
+router.get("/net-worth-summary", getNetWorthSummary);
+
+
 export default router;

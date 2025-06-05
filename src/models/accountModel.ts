@@ -1,4 +1,4 @@
-// src/models/financeModel.ts
+
 import mongoose from "mongoose";
 
 const accountSchema = new mongoose.Schema({
