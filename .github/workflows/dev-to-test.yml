@@ -7,7 +7,7 @@ on:
 
 jobs:
   sync-to-test:
-    name: Push Dev → Test, Run Tests, Create PR to Prod
+    name: Push Dev → QA, Run Tests, Create PR to Prod
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +19,11 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      - name: Fetch All
+      - name: Set Authenticated Remote
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
+
+      - name: Fetch All Branches
         run: git fetch --all
 
       - name: Checkout QA Branch
@@ -29,14 +33,14 @@ jobs:
           git push --force origin qa
 
   run-test-workflow:
-    name: Trigger test workflow on qa branch
+    name: Trigger test workflow on QA branch
     needs: sync-to-test
     uses: ./.github/workflows/run-tests.yml
     with:
       ref: qa
 
   create-pr-to-prod:
-    name: Create PR from qa to prod
+    name: Create PR from QA to Prod
     needs: run-test-workflow
     if: ${{ success() }}
     runs-on: ubuntu-latest
