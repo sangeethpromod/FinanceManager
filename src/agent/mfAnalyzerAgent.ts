@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import MutualFund from "../models/mutualFundModel";
+const MutualFund = require("../models/mutualFundModel");
 import { getGeminiModel } from "../agentConfig/agentic_initialization";
 import axios from "axios";
 

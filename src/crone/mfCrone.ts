@@ -1,5 +1,6 @@
-import MutualFund from "../models/mutualFundModel";
+const MutualFund = require("../models/mutualFundModel");
 import axios from "axios";
+const cron = require("node-cron");
 
 // ===============================
 // DAILY NAV UPDATE CRON
@@ -153,3 +154,9 @@ const fetchFundDetailsForCron = async (fundID: string) => {
     return null;
   }
 };
+
+// Schedule NAV update daily at 6:00 AM local time
+cron.schedule("0 6 * * *", async () => {
+  console.log("🕕 Running daily NAV update cron");
+  await runDailyNavUpdateCron();
+});

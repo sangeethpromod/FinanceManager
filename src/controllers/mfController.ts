@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import MutualFund from '../models/mutualFundModel'; // Use ES Module import for TypeScript
+const MutualFund = require("../models/mutualFundModel"); // Use ES Module import for TypeScript
 import { calculatePortfolioSummary } from '../utils/calculatePortfolioSummary';
 
 // ------------------ Types ------------------
