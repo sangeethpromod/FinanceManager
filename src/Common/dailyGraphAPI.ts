@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 const AggregationAnalytics = require("../models/analyticsAggeragteModel");
 const Targets = require("../models/targetModel");
 
-// GET daily actual vs target
+// GET daily actual vs target (debit/credit/target)
 const getDailyVsTarget = async (_req: Request, res: Response) => {
   try {
     const dailyAggregates = await AggregationAnalytics.find({ type: "daily" }).sort({ date: 1 });
@@ -12,10 +12,13 @@ const getDailyVsTarget = async (_req: Request, res: Response) => {
       return res.status(404).json({ error: "Target data not found" });
     }
 
+    const dailyTarget = parseFloat(targetDoc.dailyTarget);
+
     const response = dailyAggregates.map((entry: any) => ({
-      date: entry.formattedDate,                  // e.g., "24 May 2025"
-      actual: entry.totalAmount,                  // e.g., 5400
-      target: parseFloat(targetDoc.dailyTarget),  // from target doc (string to number)
+      date: entry.formattedDate,       // "06 Jun 2025"
+      target: dailyTarget,             // Numeric target
+      debitAmount: entry.debitAmount,  // e.g., 3267.9
+      creditAmount: entry.creditAmount // e.g., 2000
     }));
 
     return res.status(200).json(response);
