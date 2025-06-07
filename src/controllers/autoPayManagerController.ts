@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-const AutoPayManager = require("../models/AutoPayManager");
+const AutoPayManager = require("../models/autoPayManager");
 import dayjs from "dayjs";
 
 const createAutoPay = async (req: Request, res: Response) => {
