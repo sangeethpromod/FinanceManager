@@ -98,11 +98,12 @@ router.get("/get-asset-allocation", getAssetclassAllocation);
 
 
 // ─────────────────────── Target Related ─────────────────────── //
-const { createTarget, getAllTargets, getCurrentPeriodStatus, getTargetComparison } = require("../controllers/targetController");
+const { createTarget, getAllTargets, getCurrentPeriodStatus, getTargetComparison, updateTarget } = require("../controllers/targetController");
 router.post("/create-target", createTarget);
 router.get("/getall-target", getAllTargets);
 router.get("/current-period-status", getCurrentPeriodStatus);
 router.get("/target-comparison", getTargetComparison);
+router.patch("/update-target", updateTarget);
 
 
 

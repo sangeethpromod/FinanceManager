@@ -53,6 +53,30 @@ const getAllTargets = async (_req: Request, res: Response) => {
 
 
 
+const updateTarget = async (req: Request, res: Response) => {
+  try {
+    const updates = req.body;
+
+    // Nothing to update
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ error: "No fields provided for update" });
+    }
+
+    const updated = await Targets.findOneAndUpdate({}, updates, { new: true });
+
+    if (!updated) {
+      return res.status(404).json({ error: "Target not found" });
+    }
+
+    return res.status(200).json({ success: true, data: updated });
+  } catch (err) {
+    console.error("Error updating target:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+
 // Define the AggregationAnalyticsDoc type based on your analytics model structure
 type Period = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
@@ -336,4 +360,4 @@ function getCurrentPeriodStart(period: Period): Date {
 }
 
 
-module.exports = { createTarget, getAllTargets, getCurrentPeriodStatus, getTargetComparison };
+module.exports = { createTarget, getAllTargets, getCurrentPeriodStatus, getTargetComparison, updateTarget };
