@@ -1,26 +1,20 @@
-# Use official Node.js image
-FROM node:20-alpine
-
-# Set working directory
+FROM node:20-alpine AS builder
 WORKDIR /app
-
-# Copy package.json and package-lock.json
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies (including dev dependencies for build)
-RUN npm ci --only=production=false
+COPY tsconfig.json ./
+COPY src ./src
 
-# Copy the rest of the app
-COPY . .
-
-# Build TypeScript (with error handling)
 RUN npm run build
 
-# Remove dev dependencies to reduce image size
-RUN npm prune --production
+FROM node:20-alpine
+WORKDIR /app
 
-# Expose app port
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 5000
 
-# Run the app
 CMD ["node", "dist/app.js"]
