@@ -117,11 +117,13 @@ router.get("/get-realtime-indices", getRealTimeIndices);
 
 // ─────────────────────── Party Map Related ─────────────────────── //
 const { createPartyMap, getUnmappedParties, updatePartyMap, getAllMappings } = require("../controllers/partyMapController");
-
+const { getCategorySummary} = require("../Common/categoryTotalApi")
 router.post("/create-party-map", createPartyMap); // Create or update mapping for a category
 router.get("/party-map-unmapped", getUnmappedParties); // Get unknown/unmapped parties
 router.put("/update-party-map", updatePartyMap); // Update mapping by category and label
 router.get("/get-allparty-map", getAllMappings); // List all mappings
+router.get("/get-category-summary", getCategorySummary);
+
 
 // ─────────────────────── Graph Related ─────────────────────── //
 const { getDailyVsTarget } = require("../Common/dailyGraphAPI");
@@ -132,6 +134,13 @@ router.get("/daily-graph", getDailyVsTarget);
 // ─────────────────────── Common API Routes ─────────────────────── //
 const { getNetWorthSummary } = require("../Common/commonapi");
 router.get("/net-worth-summary", getNetWorthSummary);
+
+
+// ─────────────────────── AutoPay API Routes ─────────────────────── //
+const { createAutoPay, getAutoPay } = require("../controllers/autoPayManagerController");
+
+router.post("/create-autopay", createAutoPay);
+router.get("/get-autopay", getAutoPay);
 
 
 export default router;

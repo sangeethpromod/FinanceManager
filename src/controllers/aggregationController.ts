@@ -2,17 +2,18 @@ import { DateTime } from "luxon";
 const FinanceAggregation = require("../models/financeModel");
 const AggregationAnalyticsRun = require("../models/analyticsAggeragteModel");
 
-
 type Period = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
 interface CategoryAggregation {
   _id: string;
-  totalAmount: number;
+  creditAmount: number;
+  debitAmount: number;
 }
 
 interface AggregationCategory {
   category: string;
-  totalAmount: number;
+  creditAmount: number;
+  debitAmount: number;
 }
 
 interface DateRange {
@@ -67,38 +68,46 @@ const getStartEndDates = (period: Period): { range: DateRange; labelDate: DateTi
   };
 };
 
-const buildMetaFields = (labelDate: DateTime) => {
-  return {
-    formattedDate: labelDate.toFormat("dd LLL yyyy"),
-    week: `Week ${labelDate.weekNumber}`,
-    month: labelDate.toFormat("LLLL"),
-    quarter: `Q${Math.ceil(labelDate.month / 3)}`,
-    year: labelDate.year,
-  };
-};
+const buildMetaFields = (labelDate: DateTime) => ({
+  formattedDate: labelDate.toFormat("dd LLL yyyy"),
+  week: `Week ${labelDate.weekNumber}`,
+  month: labelDate.toFormat("LLLL"),
+  quarter: `Q${Math.ceil(labelDate.month / 3)}`,
+  year: labelDate.year,
+});
+
+const buildAggregationPipeline = (range: DateRange) => [
+  { $match: { createdAt: { $gte: range.start, $lte: range.end } } },
+  {
+    $group: {
+      _id: "$category",
+      creditAmount: {
+        $sum: {
+          $cond: [{ $eq: ["$type", "credit"] }, { $toDouble: "$amount" }, 0],
+        },
+      },
+      debitAmount: {
+        $sum: {
+          $cond: [{ $eq: ["$type", "debit"] }, { $toDouble: "$amount" }, 0],
+        },
+      },
+    },
+  },
+];
 
 const runAggregation = async (period: Period): Promise<string> => {
   try {
     const { range, labelDate } = getStartEndDates(period);
 
-    const results: CategoryAggregation[] = await FinanceAggregation.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: range.start, $lte: range.end },
-        },
-      },
-      {
-        $group: {
-          _id: "$category",
-          totalAmount: { $sum: { $toDouble: "$amount" } },
-        },
-      },
-    ]);
+    const results: CategoryAggregation[] = await FinanceAggregation.aggregate(buildAggregationPipeline(range));
 
-    const totalAmount: number = results.reduce((acc, cur) => acc + cur.totalAmount, 0);
+    const totalCredit = results.reduce((acc, cur) => acc + cur.creditAmount, 0);
+    const totalDebit = results.reduce((acc, cur) => acc + cur.debitAmount, 0);
+
     const categories: AggregationCategory[] = results.map(item => ({
       category: item._id,
-      totalAmount: item.totalAmount,
+      creditAmount: item.creditAmount,
+      debitAmount: item.debitAmount,
     }));
 
     const meta = buildMetaFields(labelDate);
@@ -107,7 +116,8 @@ const runAggregation = async (period: Period): Promise<string> => {
       { type: period, date: labelDate.startOf("day").toJSDate() },
       {
         $set: {
-          totalAmount,
+          creditAmount: totalCredit,
+          debitAmount: totalDebit,
           categories,
           ...meta,
         },
@@ -115,7 +125,7 @@ const runAggregation = async (period: Period): Promise<string> => {
       { upsert: true }
     );
 
-    return `✅ Aggregation complete for ${period}. Total: ₹${totalAmount}. Categories: ${results.length}`;
+    return `✅ Aggregation complete for ${period}. ₹${totalCredit} credited, ₹${totalDebit} debited across ${results.length} categories.`;
   } catch (error) {
     console.error(`❌ Aggregation failed for ${period}:`, error);
     throw error;
@@ -139,15 +149,15 @@ const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
   try {
     const { dt, range } = getStartEndForDate(dateStr);
 
-    const results: CategoryAggregation[] = await FinanceAggregation.aggregate([
-      { $match: { createdAt: { $gte: range.start, $lte: range.end } } },
-      { $group: { _id: "$category", totalAmount: { $sum: { $toDouble: "$amount" } } } },
-    ]);
+    const results: CategoryAggregation[] = await FinanceAggregation.aggregate(buildAggregationPipeline(range));
 
-    const totalAmount: number = results.reduce((acc, cur) => acc + cur.totalAmount, 0);
+    const totalCredit = results.reduce((acc, cur) => acc + cur.creditAmount, 0);
+    const totalDebit = results.reduce((acc, cur) => acc + cur.debitAmount, 0);
+
     const categories: AggregationCategory[] = results.map(item => ({
       category: item._id,
-      totalAmount: item.totalAmount,
+      creditAmount: item.creditAmount,
+      debitAmount: item.debitAmount,
     }));
 
     const meta = buildMetaFields(dt);
@@ -156,7 +166,8 @@ const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
       { type: "daily", date: dt.startOf("day").toJSDate() },
       {
         $set: {
-          totalAmount,
+          creditAmount: totalCredit,
+          debitAmount: totalDebit,
           categories,
           ...meta,
         },
@@ -164,14 +175,13 @@ const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
       { upsert: true }
     );
 
-    return `✅ Custom daily aggregation complete for ${dateStr}. Total: ₹${totalAmount}. Categories: ${results.length}`;
+    return `✅ Custom daily aggregation complete for ${dateStr}. ₹${totalCredit} credited, ₹${totalDebit} debited.`;
   } catch (error) {
     console.error(`❌ Custom daily aggregation failed for ${dateStr}:`, error);
     throw error;
   }
 };
 
-// Export everything for cron jobs and APIs
 module.exports = {
   runAggregation,
   aggregateDaily: () => runAggregation("daily"),

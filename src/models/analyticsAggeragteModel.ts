@@ -13,7 +13,8 @@ const aggregationSchema = new mongoose.Schema({
     enum: ["daily", "weekly", "monthly", "quarterly", "yearly"],
     required: true,
   },
-  totalAmount: { type: Number, required: true },
+   creditAmount: { type: Number, required: true },
+  debitAmount: { type: Number, required: true },
   categories: [categoryBreakdownSchema],
 
   // New fields for clarity and indexing
