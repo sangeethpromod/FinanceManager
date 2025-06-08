@@ -3,10 +3,6 @@ const axios = require('axios');
 // Use environment variable for API key if available
 const API_KEY = process.env.ALPHA_VANTAGE_API_KEY || 'WSVUF2TOOM7PXOEA';
 
-if (!API_KEY || API_KEY === 'WSVUF2TOOM7PXOEA') {
-    console.warn('Alpha Vantage API key is missing or not set in environment variables!');
-}
-
 // Mapping of index names to their respective Alpha Vantage symbols
 const indexSymbols = {
     sensex: 'BSE:SENSEX',

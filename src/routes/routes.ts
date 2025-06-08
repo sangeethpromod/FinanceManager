@@ -118,12 +118,13 @@ router.get("/get-realtime-indices", getRealTimeIndices);
 
 // ─────────────────────── Party Map Related ─────────────────────── //
 const { createPartyMap, getUnmappedParties, updatePartyMap, getAllMappings } = require("../controllers/partyMapController");
-const { getCategorySummary} = require("../Common/categoryTotalApi")
+const { getCategorySummary, getCategoryByName} = require("../Common/categoryTotalApi")
 router.post("/create-party-map", createPartyMap); // Create or update mapping for a category
 router.get("/party-map-unmapped", getUnmappedParties); // Get unknown/unmapped parties
-router.put("/update-party-map", updatePartyMap); // Update mapping by category and label
+router.put("/update-party-map/:category", updatePartyMap); // Update mapping by category and label
 router.get("/get-allparty-map", getAllMappings); // List all mappings
 router.get("/get-category-summary", getCategorySummary);
+router.get("/get-category-byName/:name", getCategoryByName);
 
 
 // ─────────────────────── Graph Related ─────────────────────── //

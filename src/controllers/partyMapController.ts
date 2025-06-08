@@ -76,12 +76,21 @@ const getAllMappings = async (_req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Update existing mapping (by category and label)
 const updatePartyMap = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category, label, parties, description, status }: {
+    const {
+      category,
+      newCategory,
+      label,
+      newLabel,
+      parties,
+      description,
+      status,
+    }: {
       category: string;
+      newCategory?: string;
       label: string;
+      newLabel?: string;
       parties?: string[];
       description?: string;
       status?: string;
@@ -97,30 +106,56 @@ const updatePartyMap = async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ message: "Mapping category not found." });
       return;
     }
-    const labelIdx = mappingDoc.mappings.findIndex((m: any) => m.label === label);
+
+    interface Mapping {
+      label: string;
+      parties: string[];
+    }
+
+    interface PartyCategoryMapDoc {
+      category: string;
+      mappings: Mapping[];
+      description?: string;
+      status?: string;
+      save: () => Promise<void>;
+    }
+
+    const labelIdx = (mappingDoc as PartyCategoryMapDoc).mappings.findIndex((m: Mapping) => m.label === label);
     if (labelIdx === -1) {
       res.status(404).json({ message: "Label not found in category." });
       return;
     }
+
+    // Update parties if provided
     if (parties) {
       mappingDoc.mappings[labelIdx].parties = Array.from(new Set(parties));
-    }
-    if (description !== undefined) mappingDoc.description = description;
-    if (status) mappingDoc.status = status;
-    await mappingDoc.save();
-
-    // Update finance categories for all parties
-    if (parties) {
       for (const party of parties) {
-        await bulkUpdateFinanceCategory(party, label, category);
+        await bulkUpdateFinanceCategory(party, newLabel || label, newCategory || category);
       }
     }
 
-    res.status(200).json(mappingDoc);
+    // Rename label
+    if (newLabel) {
+      mappingDoc.mappings[labelIdx].label = newLabel;
+    }
+
+    // Update top-level description and status
+    if (description !== undefined) mappingDoc.description = description;
+    if (status !== undefined) mappingDoc.status = status;
+
+    // Rename category name itself
+    if (newCategory) {
+      mappingDoc.category = newCategory;
+    }
+
+    await mappingDoc.save();
+
+    res.status(200).json({ message: "Mapping updated", data: mappingDoc });
   } catch (err: any) {
     res.status(500).json({ error: "Failed to update mapping", details: err.message });
   }
 };
+
 
 // Get all distinct parties from Finance not mapped yet
 const getUnmappedParties = async (_req: Request, res: Response): Promise<void> => {

@@ -1,5 +1,5 @@
 const FinanceRequirement = require("../models/financeModel");
-const PartyCategoryMap = require("../models/partyCategoryMap");
+// const PartyCategoryMap = require("../models/partyCategoryMap");
 
 export const bulkUpdateFinanceCategory = async (
   party: string,
@@ -7,26 +7,8 @@ export const bulkUpdateFinanceCategory = async (
   category: string
 ): Promise<void> => {
   try {
-    // Validate if the mapping actually exists and is active
-    const mapping = await PartyCategoryMap.findOne({
-      category,
-      status: "ACTIVE",
-      mappings: {
-        $elemMatch: {
-          label,
-          parties: party
-        }
-      }
-    });
-
-    if (!mapping) {
-      console.warn(`⚠️ No ACTIVE mapping found for party "${party}" under label "${label}" in category "${category}"`);
-      return;
-    }
-
-    // Update all finance entries for this party ONLY if their label/category are not already correct
     const result = await FinanceRequirement.updateMany(
-      { party, $or: [ { category: { $ne: category } }, { label: { $ne: label } } ] },
+      { party, $or: [{ category: { $ne: category } }, { label: { $ne: label } }] },
       {
         $set: {
           category,
