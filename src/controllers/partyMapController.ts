@@ -174,9 +174,80 @@ const getUnmappedParties = async (_req: Request, res: Response): Promise<void> =
   }
 };
 
+
+
+const deletePartyMap = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      category,
+      label,
+      parties
+    }: {
+      category: string;
+      label?: string;
+      parties?: string[];
+    } = req.body;
+
+    if (!category) {
+      res.status(400).json({ message: "category is required." });
+      return;
+    }
+
+    const mappingDoc = await PartyCategoryMap.findOne({ category });
+    if (!mappingDoc) {
+      res.status(404).json({ message: "Category not found." });
+      return;
+    }
+
+    // If only category is given, delete the whole category doc
+    if (!label && !parties) {
+      await PartyCategoryMap.deleteOne({ category });
+      res.status(200).json({ message: `Category '${category}' deleted.` });
+      return;
+    }
+
+    const labelIdx = mappingDoc.mappings.findIndex((m: any) => m.label === label);
+    if (labelIdx === -1) {
+      res.status(404).json({ message: "Label not found in category." });
+      return;
+    }
+
+    // If label is given, and no parties => delete entire label
+    if (label && !parties) {
+      mappingDoc.mappings.splice(labelIdx, 1);
+      await mappingDoc.save();
+      res.status(200).json({ message: `Label '${label}' deleted from category '${category}'.` });
+      return;
+    }
+
+    // If label and parties are given => remove only those parties
+    if (label && Array.isArray(parties)) {
+      const existingParties = mappingDoc.mappings[labelIdx].parties;
+      mappingDoc.mappings[labelIdx].parties = existingParties.filter(
+        (p: string) => !parties.includes(p)
+      );
+
+      // If after removal no parties left, remove the label itself
+      if (mappingDoc.mappings[labelIdx].parties.length === 0) {
+        mappingDoc.mappings.splice(labelIdx, 1);
+      }
+
+      await mappingDoc.save();
+      res.status(200).json({ message: `Parties removed from label '${label}' in category '${category}'.`, updatedDoc: mappingDoc });
+      return;
+    }
+
+    res.status(400).json({ message: "Invalid combination of inputs." });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to delete mapping", details: err.message });
+  }
+};
+
+
 module.exports = {
   createPartyMap,
   getUnmappedParties,
   updatePartyMap,
   getAllMappings,
+  deletePartyMap ,
 };
