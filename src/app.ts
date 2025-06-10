@@ -46,7 +46,7 @@ app.listen(PORT, async () => {
   startTxnWatcher();
 
     // ✅ Initialize NAV cron job
-  require("../src/crone/updateNavCron");
+  require("./crone/updateNavCron");
 
   // Initialize cron jobs after server starts
   require("./crone/aggregateCrone");
