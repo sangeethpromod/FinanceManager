@@ -107,18 +107,28 @@ const getCategoryByName = async (req: Request, res: Response) => {
 
     // For each label, get parties with their total amounts
     const labels = await Promise.all(
-      categoryMapping.mappings.map(async (map: { label: string }) => {
-        // Aggregate by party within this label and category
+      categoryMapping.mappings.map(async (map: { label: string; parties: string[] }) => {
+        // Get all party names for this label
+        const partyNames = map.parties || [];
+        
+        if (partyNames.length === 0) {
+          return {
+            label: map.label,
+            parties: [], // No parties in this label
+          };
+        }
+
+        // Aggregate by party within this category, filtering by the parties in this label
         const partiesAgg = await Finance.aggregate([
           {
             $match: {
               category: categoryName,
-              label: map.label,
+              party: { $in: partyNames }, // Match parties that belong to this label
             },
           },
           {
             $group: {
-              _id: "$party", // assuming the party field is named 'party'
+              _id: "$party",
               totalAmount: { $sum: { $toDouble: "$amount" } },
             },
           },
@@ -131,9 +141,15 @@ const getCategoryByName = async (req: Request, res: Response) => {
           },
         ]);
 
+        // Include parties that exist in the mapping but have no finance records
+        const partiesWithData = partyNames.map(partyName => {
+            const existingParty: { party: string; totalAmount: number } | undefined = partiesAgg.find((p: { party: string; totalAmount: number }) => p.party === partyName);
+          return existingParty || { party: partyName, totalAmount: 0 };
+        });
+
         return {
           label: map.label,
-          parties: partiesAgg, // array of { party, totalAmount }
+          parties: partiesWithData,
         };
       })
     );
@@ -151,7 +167,5 @@ const getCategoryByName = async (req: Request, res: Response) => {
     return res.status(500).json({ status: "error", message: "Internal Server Error" });
   }
 };
-
-
 
 export { getCategorySummary, getCategoryByName };
