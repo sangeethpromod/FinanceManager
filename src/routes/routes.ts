@@ -86,6 +86,7 @@ router.post("/aggregate/daily/custom", async (req: Request, res: Response) => {
 
 // ─────────────────────── Mutual Funds Related ─────────────────────── //
 const { addFund, getAllFunds, getPortfolioSummary, addLumpsum, updateSipStatus, getAllFundsSummary, getFundAllocation, getAssetclassAllocation } = require("../controllers/mfController");
+const { getPortfolioRiskAssessment, getMarketSentiment } = require("../controllers/riskController");
 
 router.post("/add-mutual-fund", addFund);
 router.get("/all-mutual-fund/", getAllFunds);
@@ -95,6 +96,8 @@ router.get("/get-summary", getPortfolioSummary);
 router.get("/get-allfunds-summary", getAllFundsSummary);
 router.get("/get-fund-allocation", getFundAllocation);
 router.get("/get-asset-allocation", getAssetclassAllocation);
+router.get('/risk-portfolio', getPortfolioRiskAssessment);
+router.get('/risk', getMarketSentiment);
 
 
 // ─────────────────────── Target Related ─────────────────────── //
