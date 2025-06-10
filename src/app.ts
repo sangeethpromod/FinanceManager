@@ -44,6 +44,10 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
 // After mongoose.connect(...)
   startTxnWatcher();
+
+    // ✅ Initialize NAV cron job
+  require("../src/crone/updateNavCron");
+
   // Initialize cron jobs after server starts
   require("./crone/aggregateCrone");
 });

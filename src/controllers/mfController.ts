@@ -372,7 +372,6 @@ export {
   addLumpsum,
   updateSipStatus,
   getAllFunds,
-
   getPortfolioSummary,
   getAllFundsSummary,
   getFundAllocation,

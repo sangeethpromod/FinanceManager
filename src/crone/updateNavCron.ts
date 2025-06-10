@@ -1,5 +1,5 @@
-// src/cron/updateNavCron.ts
-const MutualFund = require("../models/mutualFundModel");import axios from "axios";
+const MutualFund = require("../models/mutualFundModel");
+import axios from "axios";
 import cron from "node-cron";
 
 export const runDailyNavUpdateCron = async (): Promise<void> => {
@@ -32,8 +32,11 @@ export const runDailyNavUpdateCron = async (): Promise<void> => {
   console.log(`✅ Daily NAV update completed. Funds updated: ${updatedCount}`);
 };
 
-// Schedule the cron job to run daily at 11:55pm
+// 🌀 Log on file load
+console.log("🌀 Mutual Fund NAV Update Cron Initialized");
+
+// 🕒 Schedule the cron job to run daily at 11:55pm
 cron.schedule("55 23 * * *", async () => {
-  console.log("⏰ Daily NAV update cron initialized and running at 11:55pm");
+  console.log("⏰ Triggering scheduled NAV update at 11:55pm...");
   await runDailyNavUpdateCron();
 });

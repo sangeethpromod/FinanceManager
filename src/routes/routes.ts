@@ -145,4 +145,19 @@ router.post("/create-autopay", createAutoPay);
 router.get("/get-autopay", getAutoPay);
 
 
+
+// 🔘 Manual NAV update trigger
+import { runDailyNavUpdateCron } from "../crone/updateNavCron"; 
+
+router.get("/manual-nav-update", async (_req, res) => {
+  try {
+    console.log("🧠 Manual NAV update triggered via API");
+    await runDailyNavUpdateCron();
+    res.status(200).json({ status: "success", message: "Manual NAV update completed" });
+  } catch (err: any) {
+    console.error("❌ Manual NAV update failed:", err.message);
+    res.status(500).json({ status: "error", message: "Manual NAV update failed", error: err.message });
+  }
+});
+
 export default router;
