@@ -11,7 +11,7 @@ interface FundSummary {
   nav: number;
 }
 
-// Utility: Fetch user’s mutual fund portfolio
+// Fetch user's portfolio
 const fetchUserPortfolio = async (): Promise<FundSummary[]> => {
   const funds = await MutualFund.find();
   return funds.map((fund: any): FundSummary => ({
@@ -23,7 +23,7 @@ const fetchUserPortfolio = async (): Promise<FundSummary[]> => {
   }));
 };
 
-// Utility: Fetch current market news
+// Fetch market news
 const fetchMarketNews = async (): Promise<string[]> => {
   try {
     const apiKey = process.env.NEWSAPI_KEY;
@@ -40,19 +40,16 @@ const fetchMarketNews = async (): Promise<string[]> => {
   }
 };
 
-// ✅ Public GET API to serve advice to frontend
-const getMFInvestmentAdvice = async (_: Request, res: Response) => {
+// Main controller
+const getMFInvestmentAdvice = async (_: Request, res: Response): Promise<void> => {
   const model = getGeminiModel();
 
   try {
-    console.log("📥 Fetching portfolio...");
     const portfolio = await fetchUserPortfolio();
-
-    console.log("📰 Fetching market news...");
     const news = await fetchMarketNews();
 
     const prompt = `
-You are a financial advisor AI. Analyze the following mutual fund portfolio and provide recommendations based on current market trends.
+You are a financial advisor AI. Analyse the following mutual fund portfolio and recent market news.
 
 Portfolio:
 ${JSON.stringify(portfolio, null, 2)}
@@ -61,21 +58,41 @@ Market News:
 ${news.join("\n")}
 
 Instructions:
-- Analyse performance of the portfolio (growth, allocation, risk).
-- Recommend rebalancing, new investments or exits.
-- Use insights from market news to justify.
-- Avoid generic advice. Be direct, sharp and value-driven.
--Give a short advice Recommend rebalancing, new investments or exits for each mf keep it short to point.
+Return a clean JSON with 4 fields:
+1. "overallAnalysis": A short summary on portfolio performance, risk level and any notable concentration.
+2. "fundRecommendations": A list of objects where each has a "fund" and a short direct "advice".
+3. "portfolioActions": 3 to 5 concise action items for rebalancing, diversification, or risk optimisation.
+4. "newsActions": A list of 3-5 news headlines or summaries that are most relevant to the funds in the portfolio, each as a string. If no relevant news, say so.
+
+Respond with only valid JSON. No text outside JSON.
 `;
 
-    console.log("🧠 Generating investment recommendations...");
     const result = await model.generateContent(prompt);
-    const advice = result.response.text();
+    let raw = result.response.text();
 
-    res.status(200).json({ advice });
+    // Try to extract JSON if extra text is present
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      raw = raw.substring(firstBrace, lastBrace + 1);
+    }
+
+    // Attempt to safely parse
+    let parsedAdvice;
+    try {
+      parsedAdvice = JSON.parse(raw);
+    } catch (e) {
+      console.error("❌ Failed to parse Gemini response as JSON. Raw response:", raw);
+      res.status(500).json({ error: "Invalid AI response format" });
+      return;
+    }
+
+    res.status(200).json(parsedAdvice);
+    return;
   } catch (err: any) {
     console.error("❌ Error generating investment advice:", err);
     res.status(500).json({ error: "Internal server error" });
+    return;
   }
 };
 
