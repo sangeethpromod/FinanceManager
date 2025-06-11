@@ -42,6 +42,7 @@ const fetchMarketNews = async (): Promise<string[]> => {
 
 // Main controller
 const getMFInvestmentAdvice = async (_: Request, res: Response): Promise<void> => {
+  console.log("🔎 MF Analyzer Agent has been triggered by API call");
   const model = getGeminiModel();
 
   try {

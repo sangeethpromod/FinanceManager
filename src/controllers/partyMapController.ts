@@ -9,12 +9,14 @@ const createPartyMap = async (req: Request, res: Response): Promise<void> => {
       category,
       mappings,
       description,
-      status
+      status,
+      allowMerge = true // New parameter to control merging behavior
     }: {
       category: string;
       mappings: { label: string; parties: string[] }[];
       description?: string;
       status?: string;
+      allowMerge?: boolean;
     } = req.body;
 
     if (!category || !Array.isArray(mappings) || mappings.length === 0) {
@@ -37,20 +39,43 @@ const createPartyMap = async (req: Request, res: Response): Promise<void> => {
     for (const map of mappings) {
       const { label, parties } = map;
 
-      if (!label || !Array.isArray(parties) || parties.length === 0) continue;
+      if (!label) {
+        console.warn(`⚠️ Label is missing, skipping mapping`);
+        continue;
+      }
+
+      // Allow empty parties array for creating labels without parties
+      if (!Array.isArray(parties)) {
+        console.warn(`⚠️ Parties must be an array for label '${label}', skipping`);
+        continue;
+      }
 
       const labelIdx = mappingDoc.mappings.findIndex((m: any) => m.label === label);
 
       if (labelIdx >= 0) {
-        const existingParties = mappingDoc.mappings[labelIdx].parties;
-        mappingDoc.mappings[labelIdx].parties = Array.from(new Set([...existingParties, ...parties]));
+        // Label exists - merge or replace based on allowMerge flag
+        if (allowMerge) {
+          // Merge: Add new parties to existing ones (avoid duplicates)
+          const existingParties = mappingDoc.mappings[labelIdx].parties || [];
+          const mergedParties = Array.from(new Set([...existingParties, ...parties]));
+          mappingDoc.mappings[labelIdx].parties = mergedParties;
+          console.log(`✅ Merged parties for existing label '${label}' in category '${category}'`);
+        } else {
+          // Replace: Overwrite existing parties with new ones
+          mappingDoc.mappings[labelIdx].parties = parties;
+          console.log(`✅ Replaced parties for existing label '${label}' in category '${category}'`);
+        }
       } else {
+        // Label doesn't exist - create new label
         mappingDoc.mappings.push({ label, parties });
+        console.log(`✅ Created new label '${label}' with ${parties.length} parties in category '${category}'`);
       }
 
-      // Update each party's finance category
+      // Update each party's finance category (only if parties exist)
       for (const party of parties) {
-        await bulkUpdateFinanceCategory(party, label, category);
+        if (party && party.trim()) {
+          await bulkUpdateFinanceCategory(party, label, category);
+        }
       }
     }
 
@@ -59,13 +84,19 @@ const createPartyMap = async (req: Request, res: Response): Promise<void> => {
 
     await mappingDoc.save();
 
-    res.status(201).json(mappingDoc);
+    res.status(201).json({
+      success: true,
+      message: "Party category mapping updated successfully",
+      data: mappingDoc
+    });
   } catch (err: any) {
-    res.status(500).json({ error: "Failed to create mapping", details: err.message });
+    console.error("Error in createPartyMap:", err);
+    res.status(500).json({ 
+      error: "Failed to create mapping", 
+      details: err.message 
+    });
   }
 };
-
-
 // Get all current mappings
 const getAllMappings = async (_req: Request, res: Response): Promise<void> => {
   try {
