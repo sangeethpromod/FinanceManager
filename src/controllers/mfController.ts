@@ -153,8 +153,14 @@ const addLumpsum = async (req: Request<{}, {}, LumpsumRequestBody>, res: Respons
     const fund = await MutualFund.findOne({ fundID });
     if (!fund) return res.status(404).json({ error: 'Fund not found' });
 
+    // Fetch latest NAV from external API
+    const mfRes = await axios.get(`https://api.mfapi.in/mf/${fundID}/latest`);
+    const nav = parseFloat(mfRes.data.data[0]?.nav || '0');
+    if (!nav || isNaN(nav)) {
+      return res.status(400).json({ error: 'Failed to fetch latest NAV' });
+    }
+
     const date = investmentDate ? new Date(investmentDate) : new Date();
-    const nav = parseFloat(fund.fundNav);
     const units = parseFloat((parseFloat(amount) / nav).toFixed(3));
 
     fund.transactions.push({
@@ -165,6 +171,9 @@ const addLumpsum = async (req: Request<{}, {}, LumpsumRequestBody>, res: Respons
       type: 'LUMPSUM',
     });
 
+    fund.fundNav = nav; // Optional: update stored NAV too
+    fund.lastNavUpdated = new Date();
+
     calculatePortfolioSummary(fund);
     await fund.save();
 
@@ -173,6 +182,7 @@ const addLumpsum = async (req: Request<{}, {}, LumpsumRequestBody>, res: Respons
       message: 'Lumpsum added',
       data: {
         unitsAllotted: units,
+        usedNav: nav,
         newTotalUnits: fund.totalUnitsHeld,
         newCurrentValue: fund.currentAmount,
       },

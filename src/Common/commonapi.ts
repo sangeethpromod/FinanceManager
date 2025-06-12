@@ -50,11 +50,13 @@ const getNetWorthSummary = async (_req: Request, res: Response): Promise<void> =
       totalMfInvestment += parseFloat(String(mf.currentinvestment || "0"));
     });
 
-    const networth = totalBankBalance + totalMfInvestment;
+    const stocksValue = 27537.9;
+    const networth = totalBankBalance + totalMfInvestment + stocksValue;
 
-    const response: NetWorthResponse = {
+    const response: NetWorthResponse & { stocks: number } = {
       banks,
       mfInvestment: totalMfInvestment,
+      stocks: stocksValue,
       networth
     };
 

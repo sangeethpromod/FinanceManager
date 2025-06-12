@@ -90,7 +90,7 @@ const { getPortfolioRiskAssessment, getMarketSentiment } = require("../controlle
 
 router.post("/add-mutual-fund", addFund);
 router.get("/all-mutual-fund/", getAllFunds);
-router.post('/funds/lumpsum', addLumpsum);        
+router.post('/add-lumpsum', addLumpsum);        
 router.put('/funds/sip-status', updateSipStatus);
 router.get("/get-summary", getPortfolioSummary);
 router.get("/get-allfunds-summary", getAllFundsSummary);
