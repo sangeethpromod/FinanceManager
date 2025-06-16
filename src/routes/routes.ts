@@ -164,4 +164,22 @@ router.get("/manual-nav-update", async (_req, res) => {
   }
 });
 
+
+// ─────────────────────── Chat Agent API Routes ─────────────────────── //
+import { handleFinanceQuery } from "../Chat/ChatController/agentController";
+router.post("/ask", async (req, res) => {
+  try {
+    const { userMessage } = req.body;
+    if (!userMessage) {
+      res.status(400).json({ error: "Missing user message" });
+      return;
+    }
+    const answer = await handleFinanceQuery(userMessage);
+    res.status(200).json({ answer });
+  } catch (err) {
+    console.error("❌ Error in /ask:", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal Server Error" });
+  }
+});
+
 export default router;
