@@ -1,85 +1,193 @@
+import { DateTime } from "luxon";
 const FinanceAggregation = require("../models/financeModel");
-const AggregationAnalytics = require("../models/analyticsAggeragteModel");
+const AggregationAnalyticsRun = require("../models/analyticsAggeragteModel");
 
-function getStartEndDates(period: "daily" | "weekly" | "monthly" | "quarterly" | "yearly") {
-  const now = new Date();
-  let start, end;
+type Period = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+
+interface CategoryAggregation {
+  _id: string;
+  creditAmount: number;
+  debitAmount: number;
+}
+
+interface AggregationCategory {
+  category: string;
+  creditAmount: number;
+  debitAmount: number;
+}
+
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+const getStartEndDates = (period: Period): { range: DateRange; labelDate: DateTime } => {
+  const now = DateTime.utc();
+
+  let labelDate: DateTime;
+  let start: DateTime;
+  let end: DateTime;
 
   switch (period) {
     case "daily":
-      start = new Date(now.setHours(0, 0, 0, 0));
-      end = new Date(now.setHours(23, 59, 59, 999));
+      labelDate = now.minus({ days: 1 });
+      start = labelDate.startOf("day");
+      end = labelDate.endOf("day");
       break;
-
     case "weekly":
-      const day = now.getDay(); // Sunday = 0
-      start = new Date(now);
-      start.setDate(start.getDate() - day);
-      start.setHours(0, 0, 0, 0);
-      end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
+      labelDate = now.minus({ weeks: 1 }).startOf("week");
+      start = labelDate;
+      end = labelDate.endOf("week");
       break;
-
     case "monthly":
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      end.setHours(23, 59, 59, 999);
+      labelDate = now.minus({ months: 1 }).startOf("month");
+      start = labelDate;
+      end = labelDate.endOf("month");
       break;
-
-    case "quarterly":
-      const quarter = Math.floor(now.getMonth() / 3);
-      start = new Date(now.getFullYear(), quarter * 3, 1);
-      end = new Date(now.getFullYear(), quarter * 3 + 3, 0);
-      end.setHours(23, 59, 59, 999);
+    case "quarterly": {
+      const current = now.minus({ months: 3 });
+      const quarter = Math.floor((current.month - 1) / 3) + 1;
+      const monthStart = (quarter - 1) * 3 + 1;
+      labelDate = DateTime.utc(current.year, monthStart, 1);
+      start = labelDate;
+      end = labelDate.plus({ months: 3 }).minus({ days: 1 }).endOf("day");
       break;
-
+    }
     case "yearly":
-      start = new Date(now.getFullYear(), 0, 1);
-      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+      labelDate = now.minus({ years: 1 }).startOf("year");
+      start = labelDate;
+      end = labelDate.endOf("year");
       break;
+    default:
+      throw new Error("Invalid period");
   }
 
-  return { start, end };
-}
+  return {
+    range: { start: start.toJSDate(), end: end.toJSDate() },
+    labelDate,
+  };
+};
 
-async function runAggregation(period: "daily" | "weekly" | "monthly" | "quarterly" | "yearly") {
-  const { start, end } = getStartEndDates(period);
+const buildMetaFields = (labelDate: DateTime) => ({
+  formattedDate: labelDate.toFormat("dd LLL yyyy"),
+  week: `Week ${labelDate.weekNumber}`,
+  month: labelDate.toFormat("LLLL"),
+  quarter: `Q${Math.ceil(labelDate.month / 3)}`,
+  year: labelDate.year,
+});
 
-  const results = await FinanceAggregation.aggregate([
-    {
-      $match: {
-        createdAt: { $gte: start, $lte: end }
-      }
+const buildAggregationPipeline = (range: DateRange) => [
+  { $match: { createdAt: { $gte: range.start, $lte: range.end } } },
+  {
+    $group: {
+      _id: "$category",
+      creditAmount: {
+        $sum: {
+          $cond: [{ $eq: ["$type", "credit"] }, { $toDouble: "$amount" }, 0],
+        },
+      },
+      debitAmount: {
+        $sum: {
+          $cond: [{ $eq: ["$type", "debit"] }, { $toDouble: "$amount" }, 0],
+        },
+      },
     },
-    {
-      $group: {
-        _id: "$category",
-        totalAmount: { $sum: { $toDouble: "$amount" } }
-      }
-    }
-  ]);
+  },
+];
 
-  for (const item of results) {
-    await AggregationAnalytics.updateOne(
-      { date: start, type: period, category: item._id },
+const runAggregation = async (period: Period): Promise<string> => {
+  try {
+    const { range, labelDate } = getStartEndDates(period);
+
+    const results: CategoryAggregation[] = await FinanceAggregation.aggregate(buildAggregationPipeline(range));
+
+    const totalCredit = results.reduce((acc, cur) => acc + cur.creditAmount, 0);
+    const totalDebit = results.reduce((acc, cur) => acc + cur.debitAmount, 0);
+
+    const categories: AggregationCategory[] = results.map(item => ({
+      category: item._id,
+      creditAmount: item.creditAmount,
+      debitAmount: item.debitAmount,
+    }));
+
+    const meta = buildMetaFields(labelDate);
+
+    await AggregationAnalyticsRun.updateOne(
+      { type: period, date: labelDate.startOf("day").toJSDate() },
       {
         $set: {
-          totalAmount: item.totalAmount,
-        }
+          creditAmount: totalCredit,
+          debitAmount: totalDebit,
+          categories,
+          ...meta,
+        },
       },
       { upsert: true }
     );
+
+    return `✅ Aggregation complete for ${period}. ₹${totalCredit} credited, ₹${totalDebit} debited across ${results.length} categories.`;
+  } catch (error) {
+    console.error(`❌ Aggregation failed for ${period}:`, error);
+    throw error;
   }
+};
 
-  return `Aggregation complete for ${period}. ${results.length} categories processed.`;
-}
+const getStartEndForDate = (dateStr: string): { dt: DateTime; range: DateRange } => {
+  const dt = DateTime.fromISO(dateStr, { zone: "utc" });
+  if (!dt.isValid) throw new Error("Invalid date format. Use YYYY-MM-DD");
 
-// Exporting individual functions to use in API + cron
+  return {
+    dt,
+    range: {
+      start: dt.startOf("day").toJSDate(),
+      end: dt.endOf("day").toJSDate(),
+    },
+  };
+};
+
+const aggregateDailyCustom = async (dateStr: string): Promise<string> => {
+  try {
+    const { dt, range } = getStartEndForDate(dateStr);
+
+    const results: CategoryAggregation[] = await FinanceAggregation.aggregate(buildAggregationPipeline(range));
+
+    const totalCredit = results.reduce((acc, cur) => acc + cur.creditAmount, 0);
+    const totalDebit = results.reduce((acc, cur) => acc + cur.debitAmount, 0);
+
+    const categories: AggregationCategory[] = results.map(item => ({
+      category: item._id,
+      creditAmount: item.creditAmount,
+      debitAmount: item.debitAmount,
+    }));
+
+    const meta = buildMetaFields(dt);
+
+    await AggregationAnalyticsRun.updateOne(
+      { type: "daily", date: dt.startOf("day").toJSDate() },
+      {
+        $set: {
+          creditAmount: totalCredit,
+          debitAmount: totalDebit,
+          categories,
+          ...meta,
+        },
+      },
+      { upsert: true }
+    );
+
+    return `✅ Custom daily aggregation complete for ${dateStr}. ₹${totalCredit} credited, ₹${totalDebit} debited.`;
+  } catch (error) {
+    console.error(`❌ Custom daily aggregation failed for ${dateStr}:`, error);
+    throw error;
+  }
+};
+
 module.exports = {
+  runAggregation,
   aggregateDaily: () => runAggregation("daily"),
   aggregateWeekly: () => runAggregation("weekly"),
   aggregateMonthly: () => runAggregation("monthly"),
   aggregateQuarterly: () => runAggregation("quarterly"),
-  aggregateYearly: () => runAggregation("yearly")
+  aggregateYearly: () => runAggregation("yearly"),
+  aggregateDailyCustom,
 };
